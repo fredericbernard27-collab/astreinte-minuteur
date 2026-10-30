@@ -3,12 +3,18 @@
   'use strict';
 
   const S = window.Store;
-  const VERSION = '1.30.3';
+  const VERSION = '1.31.0';
   const $ = (sel, racine = document) => racine.querySelector(sel);
   const $$ = (sel, racine = document) => [...racine.querySelectorAll(sel)];
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const pad = (n) => String(n).padStart(2, '0');
   const JOURS = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
+
+  // iPhone / iPad : pas d'agrandissement automatique de la page quand on touche une case (texte < 16 px) ;
+  // le zoom à deux doigts reste possible (Safari ignore maximum-scale pour le geste)
+  if (/iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+    $('meta[name=viewport]').content += ', maximum-scale=1';
+  }
 
   /* ---------- Formats ---------- */
   const fmtHeure = (ts) => { const d = new Date(ts); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };

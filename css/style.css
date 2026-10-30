@@ -252,7 +252,7 @@ body.ecran-choix .onglets, body.ecran-simple .onglets { visibility: hidden; }   
 
 /* ---------- Dossiers en barres horizontales (accueil) ----------
    Une barre = un dossier. Intitulés des colonnes une seule fois, au-dessus de la première barre (.entete-barres,
-   même grille). Téléphone : 4 lignes (Nom Prénom Reprise ✕ / RPSS Antenne / Mémo Commentaire / Date Début Fin Durée) ;
+   même grille). Téléphone : 3 lignes (Nom Prénom Antenne ✕ / RPSS Mémo Commentaire / Date Début Fin Durée Reprise) ;
    tablette : 2 lignes ; PC (≥ 1150 px) : 1 ligne, Mémo d'au moins 20 caractères qui s'élargit jusqu'au bout de la ligne. */
 :root {
   /* Largeurs fixes par colonne (identiques d'une barre à l'autre), mesurées sur le contenu affiché :
@@ -260,14 +260,16 @@ body.ecran-choix .onglets, body.ecran-simple .onglets { visibility: hidden; }   
      RPSS ≈ 6 chiffres, « 28/10 », « 00:40 », durée à 3 chiffres, Commentaire ≈ 10 majuscules. */
   --l-nom: 80px; --l-pr: 58px; --l-rpss: 66px; --l-ant: 92px; --l-date: 54px; --l-heure: 62px; --l-duree: 48px; --l-comm: 122px;
   --l-horaire: calc(var(--l-date) + 2 * var(--l-heure) + var(--l-duree) + 18px);   /* Date Début Fin Durée + 3 espaces de 6 px */
-  --grille-barre: var(--l-nom) var(--l-pr) minmax(0, 1fr) 36px;
+  /* Téléphone : 6 colonnes pour que chaque ligne ait ses propres largeurs (NOM s'élargit, Antenne et Reprise
+     se partagent les 2 colonnes de droite, les horaires prennent les 4 de gauche) */
+  --grille-barre: var(--l-rpss) minmax(0, 1fr) 66px 34px 54px 30px;
 }
 .lignes-dossiers { display: grid; gap: 10px; }
 .ligne-dossier {
   position: relative; display: grid; gap: 6px 8px; align-items: start; padding: 8px 10px; background: var(--surface);
   border: 1px solid var(--bord); border-left: 5px solid var(--bord); border-radius: 12px;
   grid-template-columns: var(--grille-barre);
-  grid-template-areas: "nom pr rep suppr" "rpss rpss ant ant" "memo memo comm comm" "h h h h";
+  grid-template-areas: "nom nom pr ant ant suppr" "rpss memo memo comm comm comm" "h h h h rep rep";
   touch-action: manipulation; -webkit-user-select: none; user-select: none;
 }
 .ligne-active { border-color: var(--accent); border-left-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-doux);
@@ -370,7 +372,18 @@ body.ecran-choix .onglets, body.ecran-simple .onglets { visibility: hidden; }   
 .b-interventions { grid-column: 1 / -1; display: grid; gap: 8px; padding-top: 6px; border-top: 1px dashed var(--bord); }
 .b-interv {
   display: grid; gap: 6px 8px; align-items: start; grid-template-columns: var(--grille-barre);
-  grid-template-areas: "type type type suppr" "memo memo comm comm" "h h h h";
+  grid-template-areas: "type type type type type suppr" "memo memo memo comm comm comm" "h h h h . .";
+}
+/* Téléphone : écarts resserrés, horaires étirés sur leurs 4 colonnes, ✕ plus étroit, intitulés sur 2 lignes
+   (RPSS, Mémo et Commentaire se lisent dans les cases vides) */
+@media (max-width: 639px) {
+  .ligne-dossier, .b-interv { column-gap: 6px; }
+  .ligne-dossier { padding: 8px 8px 8px 8px; }
+  .b-horaire { gap: 4px; grid-template-columns: minmax(0, 54fr) minmax(0, 62fr) minmax(0, 62fr) minmax(0, 46fr); justify-content: stretch; }
+  .b-suppr { width: 30px; }
+  .btn-barre-reprise, .btn-barre-encours { padding: 0 4px; font-size: .88rem; }
+  .entete-barres .b-rpss, .entete-barres .b-memo, .entete-barres .b-comm { display: none; }
+  .ligne-dossier .b-valider-btns { margin-left: 0; min-width: 0; }
 }
 .b-interv > * { min-width: 0; }
 .b-interv .b-type { grid-area: type; align-self: center; font-size: .78rem; font-weight: 600; color: var(--texte-2); }
