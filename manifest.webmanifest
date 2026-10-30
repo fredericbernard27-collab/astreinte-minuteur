@@ -1,0 +1,16 @@
+{
+  "name": "Astreinte Minuteur",
+  "short_name": "Astreinte",
+  "description": "Suivi des sollicitations et du temps d'astreinte médicale HAD",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f4f2",
+  "theme_color": "#9b5641",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

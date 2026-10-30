@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#9b5641">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Astreinte">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="description" content="Suivi des sollicitations et du temps d'astreinte médicale HAD">
+  <title>Astreinte Minuteur</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/style.css?v=1.30.3">
+</head>
+<body>
+  <div id="verrou"></div>
+
+  <div id="app" hidden>
+    <header class="entete">
+      <div class="entete-titre"><strong>⏱ Astreinte</strong><span id="entete-semaine"></span></div>
+      <!-- Onglets en haut, centrés entre « Astreinte » et le médecin -->
+      <nav class="onglets" aria-label="Navigation">
+        <button data-a="onglet" data-v="accueil"><span aria-hidden="true">📞</span>Appels</button>
+        <button data-a="onglet" data-v="semaine"><span aria-hidden="true">📅</span>Semaine</button>
+        <button data-a="onglet" data-v="stats"><span aria-hidden="true">📊</span>Stats</button>
+        <button data-a="onglet" data-v="plus"><span aria-hidden="true">⚙️</span>Plus</button>
+      </nav>
+      <button class="chip-medecin" id="btn-medecin" data-a="choisir-medecin" aria-label="Changer le médecin d'astreinte"></button>
+    </header>
+    <div id="barre-chrono" aria-live="polite"></div>
+    <aside id="menu" hidden aria-label="Dossiers"></aside>
+    <main id="vue"></main>
+  </div>
+
+  <div id="feuille" hidden></div>
+  <div id="toast" role="status"></div>
+
+  <!-- ?v= : numéro de version, à augmenter à chaque mise à jour pour que les appareils rechargent les fichiers -->
+  <script src="js/config.js?v=1.30.3"></script>
+  <script src="js/rules.js?v=1.30.3"></script>
+  <script src="js/store.js?v=1.30.3"></script>
+  <script src="js/csv.js?v=1.30.3"></script>
+  <script src="js/stats.js?v=1.30.3"></script>
+  <script src="js/export.js?v=1.30.3"></script>
+  <script src="js/app.js?v=1.30.3"></script>
+</body>
+</html>

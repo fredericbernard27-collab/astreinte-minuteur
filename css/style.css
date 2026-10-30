@@ -1,0 +1,884 @@
+/* Astreinte Minuteur — mobile d'abord, responsive tablette / PC, thème clair et sombre */
+/* Manrope (police du site HAD Nice & Région), embarquée pour fonctionner hors ligne : variable 200 → 800,
+   caractères latins (accents français compris). Licence SIL OFL 1.1 : vendor/manrope/OFL.txt */
+@font-face {
+  font-family: Manrope; font-style: normal; font-display: swap; font-weight: 200 800;
+  src: url(../vendor/manrope/manrope-latin-wght-normal.woff2) format("woff2");
+}
+:root {
+  /* Couleur de l'application : terracotta, distincte des couleurs des 3 HAD (SSV bleu, NICE vert, SSBDR gris) et en
+     harmonie avec elles ; gris légèrement réchauffés. Texte blanc sur terracotta : contraste 5,5:1. */
+  --fond: #f6f4f2;
+  --surface: #ffffff;
+  --surface-2: #efebe7;
+  --texte: #221c19;
+  --texte-2: #625953;
+  --bord: #e0d9d3;
+  --primaire: #9b5641;
+  --primaire-texte: #ffffff;
+  --primaire-doux: #f3e6e0;
+  --accent: #d9480f;
+  --accent-doux: #fde8dd;
+  --danger: #b42318;
+  --ok: #1f7a3a;
+  --rose: #c2185b;
+  --sur-couleur: #ffffff;   /* texte posé sur --primaire, --ok ou --rose */
+  --ombre: 0 1px 2px rgba(20, 35, 42, .06), 0 4px 14px rgba(20, 35, 42, .06);
+  --rayon: 14px;
+  --gouttiere: 16px;
+  --police-titre: Manrope, "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  /* Charte HAD Nice & Région (titre « APPELS ») : bleu marine, sable, saumon, sauge, lavande */
+  --had-bleu: #3e5891; --had-sable: #e8c07d; --had-saumon: #f2a091; --had-sauge: #a5c29d; --had-lavande: #94a3c4;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --fond: #131110; --surface: #1d1a18; --surface-2: #29241f; --texte: #efeae6; --texte-2: #b1a79f;
+    --bord: #3d3530; --primaire: #e0a68f; --primaire-texte: #2e130a; --primaire-doux: #40291f;
+    --accent: #ff8a50; --accent-doux: #3d2618; --danger: #ff6b5e; --ok: #5fcf83; --rose: #ff7aa8; --sur-couleur: #1f0e07;
+    --ombre: 0 1px 2px rgba(0, 0, 0, .3); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --fond: #131110; --surface: #1d1a18; --surface-2: #29241f; --texte: #efeae6; --texte-2: #b1a79f;
+  --bord: #3d3530; --primaire: #e0a68f; --primaire-texte: #2e130a; --primaire-doux: #40291f;
+  --accent: #ff8a50; --accent-doux: #3d2618; --danger: #ff6b5e; --ok: #5fcf83; --rose: #ff7aa8; --sur-couleur: #1f0e07;
+  --ombre: 0 1px 2px rgba(0, 0, 0, .3); color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--fond); color: var(--texte);
+  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+body.feuille-ouverte { overflow: hidden; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled { opacity: .45; cursor: default; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 3px solid var(--primaire); outline-offset: 2px; }
+
+input, select, textarea {
+  width: 100%; padding: 11px 12px; border: 1px solid var(--bord); border-radius: 10px;
+  background: var(--surface); min-height: 46px;
+}
+textarea { resize: none; min-height: 0; overflow: hidden; }
+input:focus, select:focus, textarea:focus { border-color: var(--primaire); outline: none; box-shadow: 0 0 0 3px var(--primaire-doux); }
+
+/* ---------- Verrou ---------- */
+#verrou { min-height: 100dvh; display: grid; place-items: center; padding: var(--gouttiere); }
+.verrou { width: 100%; max-width: 380px; display: grid; gap: 12px; text-align: center; }
+.verrou .logo { font-size: 56px; }
+.verrou h1 { margin: 0 0 4px; font-size: 1.5rem; }
+.erreur { color: var(--danger); min-height: 1.2em; margin: 0; }
+.lien { background: none; border: 0; color: var(--texte-2); text-decoration: underline; padding: 8px; }
+
+/* ---------- Structure ---------- */
+#app { max-width: 820px; margin: 0 auto; padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+/* En-tête : « Astreinte » | onglets Appels Semaine Stats Plus (centrés) | médecin.
+   Écran étroit : les onglets passent sur une 2e ligne, toute la largeur. */
+.entete {
+  position: sticky; top: 0; z-index: 5; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 8px;
+  padding: calc(8px + env(safe-area-inset-top)) var(--gouttiere) 6px; background: var(--fond);
+  border-bottom: 1px solid var(--bord);
+}
+.entete-titre { display: flex; flex-direction: column; line-height: 1.2; }
+.entete-titre span { font-size: .8rem; color: var(--texte-2); }
+.chip-medecin {
+  justify-self: end; border: 1px solid var(--bord); background: var(--surface); border-radius: 999px; padding: 8px 14px;
+  max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600;
+}
+main { padding: var(--gouttiere); }
+
+.onglets { grid-column: 1 / -1; grid-row: 2; display: grid; grid-template-columns: repeat(4, 1fr); }
+.onglets button {
+  background: none; border: 0; border-radius: 10px; height: 50px; padding: 0 10px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 1px; font-size: .78rem; color: var(--texte-2);
+}
+.onglets button:hover { background: var(--surface); }
+.onglets button span { font-size: 1.3rem; filter: grayscale(1); opacity: .7; }
+.onglets button.actif { color: var(--primaire); font-weight: 700; background: var(--primaire-doux); }
+.onglets button.actif span { filter: none; opacity: 1; }
+@media (min-width: 560px) {
+  .entete { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+  .onglets { grid-column: 2; grid-row: 1; display: flex; gap: 4px; }
+  .onglets button { min-width: 72px; }
+}
+
+/* ---------- Écran d'ouverture (2 cercles) et mode Simplifié ---------- */
+body.ecran-choix .onglets, body.ecran-simple .onglets { visibility: hidden; }   /* la place reste : « Astreinte » et le médecin ne bougent pas */
+.cercle {
+  --taille: min(240px, 64vw);
+  width: var(--taille); height: var(--taille); flex: 0 0 auto; border-radius: 50%; padding: 12px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  border: 3px solid var(--primaire); box-shadow: var(--ombre); font-weight: 700;
+  transition: transform .15s, background-color .2s, border-color .2s, opacity .35s, width .35s, height .35s, margin .35s;
+}
+.cercle:active { transform: scale(.97); }
+.cercle-titre { font-size: 1.6rem; letter-spacing: .02em; }
+.choix-mode {
+  min-height: calc(100vh - 200px); display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 28px; padding: 16px 0;
+}
+.cercle-simple { background: var(--primaire); color: var(--sur-couleur); }
+.cercle-standard { background: var(--surface); color: var(--primaire); }
+/* Clic sur Simplifié : le cercle Standard s'efface, Simplifié se recentre */
+.choix-mode.vers-simple { gap: 0; }
+.choix-mode.vers-simple .cercle-standard { opacity: 0; width: 0; height: 0; margin: 0; padding: 0; border-width: 0; overflow: hidden; }
+@media (min-width: 560px) {   /* assez large : les 2 cercles sur une même ligne */
+  .choix-mode { flex-direction: row; gap: 48px; }
+}
+.mode-simple { display: flex; flex-direction: column; align-items: center; gap: 18px; padding-bottom: 16px; }
+.changer-mode { align-self: flex-start; font-size: .9rem; }
+/* Mode Simplifié : ligne « Passer en mode Standard » entre le cercle et le tableau, alignée sur le bord droit du tableau */
+.vers-standard {
+  width: 100%; max-width: 530px; margin: -6px 0 -10px; padding: 4px 2px; border: 0; background: none;
+  color: var(--texte-2); font-size: .9rem; text-align: right;
+}
+.vers-standard:hover { color: var(--texte); text-decoration: underline; }
+.cercle-chrono { --taille: min(260px, 70vw); }
+.cercle-chrono.pret { background: var(--primaire); border-color: var(--primaire); color: var(--sur-couleur); }
+.cercle-chrono.en-cours { background: var(--ok); border-color: var(--ok); color: var(--sur-couleur); }
+.cercle-chrono.suspendu { background: var(--primaire); border-color: var(--primaire); color: var(--sur-couleur); }   /* terracotta */
+.cercle-temps { font-size: 2.4rem; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.cercle-etat { position: relative; font-size: 1.7rem; font-weight: 700; line-height: 1.2; }
+/* « En cours » suivi de 1, 2, 3 points qui apparaissent un à un puis s'effacent (le mot reste centré) */
+.points { position: absolute; left: 100%; top: 0; white-space: nowrap; }
+.points i { font-style: normal; opacity: 0; animation: point-1 2s steps(1, end) infinite; }
+.points i:nth-child(2) { animation-name: point-2; }
+.points i:nth-child(3) { animation-name: point-3; }
+@keyframes point-1 { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 1; } }
+@keyframes point-2 { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 1; } }
+@keyframes point-3 { 0% { opacity: 0; } 75% { opacity: 1; } 100% { opacity: 1; } }
+/* « Suspendu » : clignotement très lent */
+.clignote { animation: clignote 4s ease-in-out infinite; }
+@keyframes clignote { 0%, 100% { opacity: 1; } 50% { opacity: .2; } }
+/* Interventions terminées : Début (jour, date, heure) | Fin (jour + date, heure) | Durée, modifiables */
+.simple-lignes {
+  --grille-simple: 34px var(--l-date) var(--l-heure) 64px var(--l-heure) var(--l-duree) 84px 32px;
+  width: 100%; max-width: 530px; display: grid; gap: 0; background: var(--surface); border-radius: var(--rayon);
+  box-shadow: var(--ombre); overflow-x: auto;
+}
+.simple-lignes .simple-entete, .simple-lignes .simple-horaire { display: grid; grid-template-columns: var(--grille-simple); gap: 4px; justify-content: center; align-items: center; }
+.simple-entete { padding: 8px 10px; font-size: .82rem; font-weight: 600; color: var(--texte-2); background: var(--surface-2); text-align: center; }
+.simple-entete .col-debut { grid-column: 1 / 4; } .simple-entete .col-fin { grid-column: 4 / 6; } .simple-entete .col-duree { grid-column: 6; } .simple-entete .col-ant { grid-column: 7; }
+.simple-ant { min-height: 40px; min-width: 0; width: 100%; padding: 6px 2px; font-size: .9rem; }
+.simple-ant.manque { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); color: var(--accent); font-weight: 600; }
+.mode-simple .alerte-antenne { width: 100%; max-width: 530px; margin: 0; box-sizing: border-box; text-align: center; }
+.simple-lignes .simple-suppr { grid-area: auto; width: 32px; height: 36px; margin: 0; justify-self: center; }
+.simple-ligne { padding: 8px 10px; border-top: 1px solid var(--bord); display: grid; gap: 8px; }
+.simple-lignes .simple-horaire { grid-area: auto; }
+.simple-horaire input { min-height: 40px; padding: 6px 2px; font-size: .95rem; }
+.simple-horaire input.conflit { color: var(--danger); border-color: var(--danger); font-weight: 700; }
+.b-jour { font-size: .85rem; font-weight: 600; color: var(--texte-2); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.simple-horaire [data-tag-fin] { display: none; }   /* le jour et la date de fin sont écrits devant l'heure */
+@media (max-width: 399px) {   /* écran très étroit : jour seul devant la Fin */
+  .simple-lignes { --grille-simple: 28px 50px 58px 28px 58px 40px 64px 28px; }
+  .simple-lignes .simple-entete, .simple-lignes .simple-horaire { gap: 3px; }
+  .simple-lignes .simple-suppr { width: 28px; }
+  .jour-date { display: none; }
+  .simple-ligne, .simple-entete { padding-left: 6px; padding-right: 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cercle { transition: none; }
+  .points i { animation: none; opacity: 1; }
+  .clignote { animation: none; }
+}
+
+/* ---------- Chronomètre ---------- */
+#barre-chrono { position: sticky; top: 62px; z-index: 4; }
+.chrono {
+  display: flex; align-items: center; gap: 10px; margin: 0 var(--gouttiere); margin-top: 10px; padding: 8px 8px 8px 14px;
+  background: var(--accent); color: #fff; border-radius: var(--rayon); box-shadow: var(--ombre);
+}
+.chrono-info { flex: 1; min-width: 0; background: none; border: 0; color: inherit; text-align: left; display: flex; flex-direction: column; padding: 0; }
+.chrono-info b, .chrono-info span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chrono-info span { font-size: .85rem; opacity: .9; }
+.chrono-temps { font-variant-numeric: tabular-nums; font-size: 1.35rem; font-weight: 700; }
+.btn-stop { width: 46px; height: 46px; border-radius: 12px; border: 0; background: rgba(255, 255, 255, .22); color: #fff; font-size: 1.1rem; }
+.pulse { width: 10px; height: 10px; border-radius: 50%; background: #fff; animation: pulse 1.2s infinite; flex: none; }
+@keyframes pulse { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
+
+/* ---------- Boutons ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 46px; padding: 10px 14px;
+  border-radius: 12px; border: 1px solid var(--bord); background: var(--surface); font-weight: 600; text-align: center;
+}
+.btn-primaire { background: var(--primaire); color: var(--primaire-texte); border-color: var(--primaire); }
+.btn-danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, var(--bord)); }
+.btn-grand { width: 100%; min-height: 58px; font-size: 1.05rem; justify-content: flex-start; padding-left: 18px; }
+.btn-texte { background: none; border: 0; color: var(--primaire); font-weight: 700; padding: 8px; min-height: 40px; }
+.btn-rond { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--bord); background: var(--surface); font-size: 1.4rem; line-height: 1; }
+.btn-stop-large { width: 100%; background: var(--accent); color: #fff; border-color: var(--accent); margin: 6px 0; }
+.btn-bas { width: 100%; margin-top: 8px; }
+.rangee { display: flex; flex-wrap: wrap; gap: 8px; }
+.rangee > * { flex: 1 1 180px; }
+
+.actions { display: grid; gap: 10px; }
+.btn-appel {
+  display: flex; align-items: center; gap: 16px; width: 100%; padding: 20px; border: 0; border-radius: 18px;
+  background: var(--primaire); color: var(--primaire-texte); font-size: 1.3rem; font-weight: 800; text-align: left; box-shadow: var(--ombre);
+}
+.btn-appel small { display: block; font-size: .85rem; font-weight: 500; opacity: .85; }
+.btn-appel-icone { font-size: 2rem; width: 56px; height: 56px; border-radius: 50%; background: rgba(255, 255, 255, .18); display: grid; place-items: center; flex: none; }
+.btn-appel:active { transform: scale(.99); }
+.actions-sec { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.bandeau {
+  display: block; width: 100%; margin-top: 12px; padding: 12px 14px; border-radius: 12px; text-align: left; font-weight: 600;
+  background: var(--accent-doux); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); color: var(--texte);
+}
+.bandeau-gris { background: var(--surface-2); border-color: var(--bord); }
+
+/* ---------- Cartes dossiers ---------- */
+.titre-section { font-size: 1.05rem; margin: 22px 0 10px; display: flex; align-items: center; gap: 8px; }
+.compteur { font-size: .8rem; background: var(--surface-2); color: var(--texte-2); border-radius: 999px; padding: 1px 9px; font-weight: 600; }
+.cartes { display: grid; gap: 10px; }
+@media (min-width: 700px) { .cartes { grid-template-columns: 1fr 1fr; } }
+.carte { display: flex; background: var(--surface); border: 1px solid var(--bord); border-radius: var(--rayon); box-shadow: var(--ombre); overflow: hidden; }
+.carte-active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-doux); }
+.carte-corps { flex: 1; min-width: 0; background: none; border: 0; text-align: left; padding: 12px 14px; display: grid; gap: 2px; }
+.carte-l1 { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 1.05rem; }
+.carte-l2 { color: var(--texte); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.carte-l3 { color: var(--texte-2); font-size: .85rem; }
+.carte-btn { width: 60px; border: 0; border-left: 1px solid var(--bord); background: var(--primaire-doux); color: var(--primaire); font-size: 1.3rem; }
+.carte-stop { background: var(--accent); color: #fff; }
+.pastille { font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--accent-doux); color: var(--accent); }
+.vide { color: var(--texte-2); text-align: center; padding: 18px 8px; margin: 0; }
+.vide::before { content: "○"; display: block; margin: 0 auto 6px; font-size: 1.5rem; line-height: 1; color: var(--primaire); opacity: .55; }
+
+/* ---------- Dossiers en barres horizontales (accueil) ----------
+   Une barre = un dossier. Intitulés des colonnes une seule fois, au-dessus de la première barre (.entete-barres,
+   même grille). Téléphone : 4 lignes (Nom Prénom Reprise ✕ / RPSS Antenne / Mémo Commentaire / Date Début Fin Durée) ;
+   tablette : 2 lignes ; PC (≥ 1150 px) : 1 ligne, Mémo d'au moins 20 caractères qui s'élargit jusqu'au bout de la ligne. */
+:root {
+  /* Largeurs fixes par colonne (identiques d'une barre à l'autre), mesurées sur le contenu affiché :
+     NOM ≈ 6 majuscules, PR ≈ 4 (la suite du texte se tape mais reste cachée), antenne abrégée la plus longue,
+     RPSS ≈ 6 chiffres, « 28/10 », « 00:40 », durée à 3 chiffres, Commentaire ≈ 10 majuscules. */
+  --l-nom: 80px; --l-pr: 58px; --l-rpss: 66px; --l-ant: 92px; --l-date: 54px; --l-heure: 62px; --l-duree: 48px; --l-comm: 122px;
+  --l-horaire: calc(var(--l-date) + 2 * var(--l-heure) + var(--l-duree) + 18px);   /* Date Début Fin Durée + 3 espaces de 6 px */
+  --grille-barre: var(--l-nom) var(--l-pr) minmax(0, 1fr) 36px;
+}
+.lignes-dossiers { display: grid; gap: 10px; }
+.ligne-dossier {
+  position: relative; display: grid; gap: 6px 8px; align-items: start; padding: 8px 10px; background: var(--surface);
+  border: 1px solid var(--bord); border-left: 5px solid var(--bord); border-radius: 12px;
+  grid-template-columns: var(--grille-barre);
+  grid-template-areas: "nom pr rep suppr" "rpss rpss ant ant" "memo memo comm comm" "h h h h";
+  touch-action: manipulation; -webkit-user-select: none; user-select: none;
+}
+.ligne-active { border-color: var(--accent); border-left-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-doux);
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface)); }
+/* Une barre sur deux très légèrement teintée (repérage d'une ligne à l'autre) */
+.lignes-dossiers > .ligne-dossier:not(.entete-barres):not(.ligne-active):nth-child(even) { background: color-mix(in srgb, var(--surface-2) 45%, var(--surface)); }
+.ligne-dossier > *, .b-horaire > * { min-width: 0; }
+.b-nom { grid-area: nom; } .b-pr { grid-area: pr; } .b-rpss { grid-area: rpss; } .b-ant { grid-area: ant; }
+.b-memo { grid-area: memo; } .b-comm { grid-area: comm; }
+.b-rep { grid-area: rep; }
+.b-horaire {
+  grid-area: h; display: grid; gap: 6px; align-items: center; justify-content: start;
+  grid-template-columns: var(--l-date) var(--l-heure) var(--l-heure) var(--l-duree);
+}
+.b-horaire input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+.b-horaire input[type=number]::-webkit-inner-spin-button, .b-horaire input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.b-suppr { grid-area: suppr; justify-self: end; margin-top: 2px; width: 36px; height: 36px; border-radius: 10px; border: 0; background: none; color: var(--texte-2); }
+.ligne-dossier input, .ligne-dossier select, .ligne-dossier textarea {
+  min-height: 40px; padding: 6px; font-size: .95rem; color: var(--texte); -webkit-user-select: text; user-select: text;
+}
+.ligne-dossier input[data-f=nom3], .ligne-dossier input.b-pr { text-transform: uppercase; font-weight: 700; letter-spacing: .04em;
+  font-family: var(--police-titre); font-size: 1.02rem; }
+.ligne-dossier input::placeholder { text-transform: none; font-weight: 400; letter-spacing: 0; }
+.b-horaire input { text-align: center; padding-left: 2px; padding-right: 2px; }
+.b-horaire input::-webkit-calendar-picker-indicator { display: none; }
+.b-champ { position: relative; display: block; }
+/* Mémo / Commentaire : texte sur plusieurs lignes, la case suit le texte (ou garde la hauteur réglée à la main) */
+.b-note { position: relative; }
+.ligne-dossier textarea.b-texte { display: block; padding: 9px 6px; line-height: 20px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ligne-dossier textarea.b-texte.h-fixe { overflow-y: auto; }
+.b-hauteur {   /* au-dessus de la case active (fixes quand la case change de hauteur) : − + ⤢ ↺ */
+  position: absolute; bottom: calc(100% + 3px); right: 0; z-index: 3; display: none; gap: 3px; padding: 3px;
+  border: 1px solid var(--bord); border-radius: 9px; background: var(--surface); box-shadow: var(--ombre);
+}
+.b-note.ouvert .b-hauteur { display: flex; }
+.b-hauteur button {
+  width: 32px; height: 30px; padding: 0; border: 0; border-radius: 7px; background: var(--surface-2); color: var(--texte);
+  font-weight: 700; font-size: 1rem; line-height: 1;
+}
+.b-hauteur button:hover { background: var(--primaire-doux); color: var(--primaire); }
+.b-tag {   /* « sem. préc. », « lendemain » : petite étiquette sur le coin de la case */
+  position: absolute; top: -8px; right: 2px; padding: 0 4px; border-radius: 6px; font-size: .62rem; font-weight: 700;
+  background: var(--accent); color: #fff; white-space: nowrap; pointer-events: none;
+}
+.b-tag:empty { display: none; }
+.btn-barre-stop { min-height: 40px; padding: 0 2px; border: 0; border-radius: 10px; background: var(--accent); color: #fff; font-weight: 700; font-size: .85rem; white-space: nowrap; }
+.b-chrono { min-height: 40px; display: flex; align-items: center; justify-content: center; font-size: .9rem; color: var(--accent); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.btn-barre-reprise, .btn-barre-encours { min-height: 40px; padding: 0 6px; border-radius: 10px; font-weight: 700; white-space: nowrap; }
+.btn-barre-reprise { border: 1px solid var(--primaire); background: var(--primaire-doux); color: var(--primaire); }
+.btn-barre-encours {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  border: 1px solid var(--accent); background: var(--accent); color: #fff;
+}
+
+/* Intitulés des colonnes (au-dessus de la première barre) */
+.entete-barres {   /* police des intitulés sur les libellés seulement : la grille (Mémo en « ch ») reste celle des barres */
+  background: none; border-color: transparent; padding-top: 0; padding-bottom: 0; margin-bottom: 2px;
+  color: var(--texte-2); white-space: nowrap; align-items: end;
+}
+.entete-barres > *, .entete-barres .b-horaire > * { font-size: .7rem; font-weight: 600; text-align: center; color: var(--texte-2);
+  text-transform: uppercase; letter-spacing: .05em; }
+/* NOM et Date : le libellé reste centré sur la colonne, ▲ / ▼ empilés juste à sa droite
+   (trier dans un sens ou dans l'autre ; le sens choisi est en couleur) */
+.th-tri { display: block; min-height: 20px; line-height: 20px; }
+.th-tri > span:first-child { position: relative; }
+.tri-fleches { position: absolute; left: calc(100% + 3px); top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; }
+.tri-fleches button {
+  width: 14px; height: 10px; padding: 0; border: 0; background: none; color: var(--texte-2); opacity: .55;
+  font-size: 8px; line-height: 10px;
+}
+.tri-fleches button:hover { opacity: 1; color: var(--primaire); }
+.tri-fleches button.actif { opacity: 1; color: var(--primaire); }
+.entete-barres small { font-weight: 400; }
+
+/* Horaires modifiés : « Valider / Annuler » sous Début, Fin et Durée de la barre ; chevauchements en rouge dessous */
+.b-validation { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.b-valider-btns { display: flex; justify-content: center; gap: 6px; }
+.b-valider-btns > button { flex: none; white-space: nowrap; }
+.ligne-dossier .b-valider-btns {   /* même départ que la case Début, centré sur Début + Fin + Durée */
+  margin-left: calc(var(--l-date) + 6px); min-width: calc(2 * var(--l-heure) + var(--l-duree) + 12px);
+}
+.simple-ligne .b-validation { justify-content: center; }
+.b-conflit { flex: 1 1 100%; color: var(--danger); font-weight: 700; font-size: .85rem; }
+.b-conflit:empty { display: none; }
+.btn-valider, .btn-annuler { min-height: 40px; padding: 0 12px; border-radius: 10px; font-weight: 700; }
+.btn-valider { border: 0; background: var(--primaire); color: var(--primaire-texte); }
+.btn-annuler { border: 1px solid var(--bord); background: var(--surface); }
+.ligne-dossier input.conflit { color: var(--danger); border-color: var(--danger); font-weight: 700; box-shadow: 0 0 0 2px color-mix(in srgb, var(--danger) 25%, transparent); }
+.ligne-dossier.flash { animation: flash-ligne 1.4s ease-out; }
+@keyframes flash-ligne { 0%, 30% { box-shadow: 0 0 0 4px var(--primaire); } 100% { box-shadow: none; } }
+@media (prefers-reduced-motion: reduce) { .ligne-dossier.flash { animation-duration: .01s; } }
+
+/* Interventions antérieures de la semaine d'astreinte (double clic ou « +N »), empilées sous la barre.
+   Pastille « +N » à cheval sur le coin bas-droit de la case NOM. */
+.b-histo {
+  position: absolute; right: -6px; bottom: -8px; z-index: 2; padding: 0 7px; border-radius: 999px; font-size: .7rem; font-weight: 700;
+  border: 1px solid var(--primaire); background: var(--primaire-doux); color: var(--primaire);
+}
+.b-histo.actif { background: var(--primaire); color: var(--primaire-texte); }
+.b-interventions { grid-column: 1 / -1; display: grid; gap: 8px; padding-top: 6px; border-top: 1px dashed var(--bord); }
+.b-interv {
+  display: grid; gap: 6px 8px; align-items: start; grid-template-columns: var(--grille-barre);
+  grid-template-areas: "type type type suppr" "memo memo comm comm" "h h h h";
+}
+.b-interv > * { min-width: 0; }
+.b-interv .b-type { grid-area: type; align-self: center; font-size: .78rem; font-weight: 600; color: var(--texte-2); }
+
+/* Bandeau du haut (mode Standard), le plus bas possible : tout tient sur une rangée et ne s'agrandit qu'à l'ouverture
+   de « Plage W continu » ou de « Cumul ».
+   - Ordinateur (≥ 900 px) : Plage W continu | Cumul | titre APPELS centré | Nouveau dossier.
+   - Téléphone, tablette : à gauche le titre puis les 2 boutons l'un sous l'autre, à droite Nouveau dossier ;
+     un bloc ouvert passe sous l'ensemble, sur toute la largeur.
+   Mêmes marges que les barres ; à partir de 640 px, « Nouveau dossier » est centré sur la colonne Reprise.
+   Pas de taille de police sur le bandeau lui-même : la colonne Mémo est en « ch ». */
+.bandeau-nouveau {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-auto-flow: row dense; gap: 8px 12px; align-items: center;
+  padding: 10px 10px; border: 1px solid transparent; border-left-width: 5px;
+  border-radius: 18px; box-shadow: var(--ombre);
+  /* terracotta soutenu et texte blanc dans les deux thèmes (le terracotta clair du thème sombre éblouirait sur une si grande surface) */
+  --sur-couleur: #ffffff; --bandeau: #9b5641; background: var(--bandeau); color: var(--sur-couleur);
+}
+/* Titre « APPELS » : étiquette blanche, capitales terracotta (couleur de l'application), filet des 4 couleurs de la charte HAD */
+.bandeau-titre {
+  grid-column: 1; justify-self: start; margin: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.bandeau-titre span {
+  padding: 5px 20px 4px; border-radius: 12px; background: #fff; color: #9b5641;
+  font-family: var(--police-titre);
+  font-size: 1.3rem; font-weight: 600; letter-spacing: .16em; line-height: 1.1;
+  box-shadow: 0 6px 18px rgba(20, 30, 60, .22);
+}
+.bandeau-titre::after {
+  content: ""; width: 100px; height: 5px; border-radius: 3px;
+  background: linear-gradient(90deg, var(--had-sable) 0 25%, var(--had-saumon) 25% 50%, var(--had-sauge) 50% 75%, var(--had-lavande) 75%);
+}
+.bloc-bandeau { min-width: 0; font-size: .88rem; font-weight: 700; font-variant-numeric: tabular-nums; grid-column: 1; justify-self: start; }
+/* Bloc ouvert (téléphone, tablette) : sous l'ensemble, sur toute la largeur */
+.bloc-bandeau:has(> .bloc-titre[aria-expanded="true"]) { grid-column: 1 / -1; justify-self: stretch; }
+.bloc-titre {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 8px; font-size: 1rem; font-weight: 800;
+  border: 1px solid color-mix(in srgb, var(--sur-couleur) 40%, transparent); background: color-mix(in srgb, var(--sur-couleur) 10%, transparent); color: inherit;
+}
+.bloc-titre[aria-expanded="true"] { background: color-mix(in srgb, var(--sur-couleur) 20%, transparent); }
+.bloc-bandeau.ouverture > :not(.bloc-titre) { animation: deplier .22s ease-out; }
+@keyframes deplier { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .bloc-bandeau.ouverture > :not(.bloc-titre) { animation: none; } }
+.bandeau-nouveau input {
+  width: auto; min-height: 0; padding: 2px 4px; border-radius: 6px; font-size: .88rem; font-weight: 700; text-align: center;
+  background: color-mix(in srgb, var(--sur-couleur) 14%, transparent); border-color: color-mix(in srgb, var(--sur-couleur) 45%, transparent); color: inherit;
+}
+.bandeau-nouveau input[type=time]::-webkit-calendar-picker-indicator { display: none; }
+.bandeau-nouveau .cumul-date, .bandeau-nouveau .plage-date { width: 52px; }
+.bandeau-nouveau .cumul-heure, .bandeau-nouveau .plage-heure { width: 68px; }
+/* Cumul */
+.cumul-titre { margin-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.cumul-liste { margin: 3px 0 0; padding-left: 22px; list-style: disc; display: grid; gap: 2px; }
+.cumul-liste li.espace { margin-top: 6px; }
+.cumul-liste b { font-weight: 800; }
+/* Plages continues : une par ligne, la ligne vide de saisie en haut */
+.plages { margin-top: 8px; display: grid; gap: 4px; }
+.plage { display: grid; grid-template-columns: 52px 68px 12px 52px 68px 24px; gap: 4px; align-items: center; }
+.plage-entete { font-size: .78rem; opacity: .85; }
+.plage-entete .col-debut { grid-column: 1 / 3; text-align: center; } .plage-entete .col-fin { grid-column: 4 / 6; text-align: center; }
+.plage-nouvelle input { border-style: dashed; }
+.plage-fleche { text-align: center; }
+.plage-suppr { width: 24px; height: 26px; padding: 0; border: 0; border-radius: 6px; background: none; color: inherit; opacity: .8; }
+.plage-suppr:hover { opacity: 1; background: color-mix(in srgb, var(--sur-couleur) 15%, transparent); }
+/* Chevauchement de plages : cases en rouge et avertissement (bloc rouge, lisible sur le bleu du bandeau) */
+.bandeau-nouveau input.conflit { background: var(--danger); border-color: var(--danger); color: var(--sur-couleur); }
+.plage-alerte {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 8px;
+  background: var(--danger); color: var(--sur-couleur); font-weight: 700;
+}
+.plage-alerte[hidden] { display: none; }
+.plage-alerte-texte { flex: 1 1 100%; }
+.plage-alerte .btn-valider, .plage-alerte .btn-annuler { min-height: 32px; padding: 0 10px; font-size: .85rem; }
+.plage-alerte .btn-annuler { color: var(--texte); }
+/* Nouveau dossier / Dossier existant : téléphone, ▲, texte, ▼, texte — centrés les uns sous les autres */
+.bandeau-actions {
+  grid-column: 2; grid-row: 1 / span 3; align-self: center;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center;
+}
+.btn-nouveau { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0; border: 0; background: none; color: inherit; }
+.btn-nouveau:active { transform: scale(.98); }
+.btn-nouveau .btn-appel-icone { width: 66px; height: 66px; font-size: 2.2rem; }   /* bouton d'appel agrandi */
+.bandeau-actions .triangle { font-size: .8rem; line-height: 1; }
+.bandeau-actions .action-texte { font-size: 1.15rem; font-weight: 800; white-space: nowrap; }
+/* Téléphone : boutons sur une ligne, textes de droite un peu plus petits pour laisser la place à gauche */
+.bloc-titre { white-space: nowrap; }
+@media (max-width: 639px) {
+  .bloc-titre { font-size: .92rem; padding: 4px 8px; }
+  .bandeau-actions .action-texte { font-size: 1rem; }
+}
+/* « Nouveau dossier » centré sur la colonne Reprise des barres : largeur fixe, marge droite = distance entre le
+   centre de la colonne Reprise et le bord droit, moins la demi-largeur */
+@media (min-width: 640px) {
+  .bandeau-nouveau { --centre-reprise: 99px; }   /* ✕ 36 + écart 8 + moitié de Reprise 55 */
+  .bandeau-actions { width: 160px; margin-right: calc(var(--centre-reprise) - 80px); }
+}
+@media (min-width: 900px) {
+  .bandeau-nouveau { grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: start; column-gap: 12px; }
+  .bandeau-nouveau .bloc-plages, .bandeau-nouveau .bloc-plages:has(> .bloc-titre[aria-expanded="true"]) { grid-column: 1; grid-row: 1; justify-self: start; }
+  .bandeau-nouveau .bloc-cumul, .bandeau-nouveau .bloc-cumul:has(> .bloc-titre[aria-expanded="true"]) { grid-column: 2; grid-row: 1; justify-self: start; }
+  .bandeau-titre { grid-column: 3; grid-row: 1; justify-self: center; align-self: start; margin-top: 2px; }   /* reste en place quand un bloc s'ouvre */
+  .bandeau-titre span { padding: 6px 30px 5px; font-size: 1.55rem; }
+  .bandeau-titre::after { width: 124px; }
+  .bandeau-actions { grid-column: 4; grid-row: 1; align-self: start; }
+}
+@media (min-width: 1150px) {
+  .bandeau-nouveau { --centre-reprise: 229px; }   /* ✕ 36 + écart 8 + Commentaire 122 + écart 8 + moitié de Reprise 55 */
+  /* Barre sur une ligne : Valider / Annuler dans les colonnes Mémo | horaires | Reprise, boutons sous les horaires */
+  .ligne-dossier .b-validation { grid-column: 5 / 8; display: grid; grid-template-columns: minmax(0, 1fr) var(--l-horaire) 110px; gap: 4px 8px; }
+  .ligne-dossier .b-valider-btns { grid-column: 2; grid-row: 1; }
+  .ligne-dossier .b-conflit { grid-column: 1 / -1; grid-row: 2; }
+}
+
+@media (min-width: 640px) {
+  :root { --grille-barre: var(--l-nom) var(--l-pr) var(--l-rpss) var(--l-ant) minmax(0, 1fr) 110px 36px; }
+  .ligne-dossier { grid-template-areas: "nom pr rpss ant memo rep suppr" "h h h h comm comm comm"; }
+  .b-interv { grid-template-areas: "type type type type memo . suppr" "h h h h comm comm comm"; }
+  .b-interv .b-type { min-height: 40px; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; }
+}
+@media (min-width: 1000px) {
+  #app { max-width: 1240px; }
+}
+@media (min-width: 1150px) {
+  /* Une seule ligne. Mémo : 20 caractères au minimum, puis il s'élargit pour que la barre occupe toute la largeur */
+  :root { --grille-barre: var(--l-nom) var(--l-pr) var(--l-rpss) var(--l-ant) minmax(calc(20ch + 14px), 1fr) var(--l-horaire) 110px var(--l-comm) 36px; }
+  .ligne-dossier { grid-template-areas: "nom pr rpss ant memo h rep comm suppr"; }
+  .b-interv { grid-template-areas: "type type type type memo h . comm suppr"; }
+}
+
+/* ---------- Blocs, semaine ---------- */
+.bloc { background: var(--surface); border: 1px solid var(--bord); border-radius: var(--rayon); padding: 14px; margin-top: 14px; }
+.bloc h3 { margin: 0 0 10px; font-size: 1.02rem; display: flex; align-items: center; gap: 8px; font-family: var(--police-titre); font-weight: 700; }
+.titre-section { font-family: var(--police-titre); }
+.aide { color: var(--texte-2); font-size: .88rem; margin: 4px 0 10px; }
+.centre { text-align: center; }
+.info { background: var(--primaire-doux); padding: 10px 12px; border-radius: 10px; margin: 10px 0 0; font-size: .92rem; }
+.nav-semaine { display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: center; margin: 10px 0; }
+.nav-semaine small { display: block; color: var(--texte-2); }
+/* Patients présents : établissements répartis en colonnes selon la largeur (une seule sur téléphone), séparées
+   par un liseré ; un établissement n'est jamais coupé entre deux colonnes */
+.eff-grille { columns: 250px; column-gap: 32px; column-rule: 1px solid var(--bord); }
+.eff-etab { margin-bottom: 12px; break-inside: avoid; }
+.eff-titre { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--bord); margin-bottom: 4px; }
+.eff-titre span { color: var(--texte-2); font-size: .9rem; }
+.eff-ligne { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 0; }
+.eff-ligne input { width: 96px; text-align: center; }
+.chrono-liste, .segments, .commentaires { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+/* Chronologie : frise verticale, un point par intervention (couleur du HAD) relié aux autres par un trait */
+.chrono-liste { position: relative; padding-left: 22px; }
+.chrono-liste::before { content: ""; position: absolute; left: 7px; top: 10px; bottom: 10px; width: 2px; border-radius: 1px; background: var(--bord); }
+.chrono-liste li { position: relative; }
+.chrono-liste li::before {
+  content: ""; position: absolute; left: -20px; top: 50%; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%;
+  background: var(--had, var(--primaire)); box-shadow: 0 0 0 3px var(--surface);
+}
+.chrono-liste button { width: 100%; display: flex; gap: 12px; text-align: left; background: var(--surface-2); border: 0; border-radius: 10px; padding: 8px 10px; }
+.cl-heure { display: flex; flex-direction: column; font-size: .78rem; color: var(--texte-2); min-width: 64px; }
+.cl-heure b { font-size: 1rem; color: var(--texte); }
+.cl-corps small { display: block; color: var(--texte-2); }
+.commentaires li { background: var(--surface-2); border-radius: 10px; padding: 8px 10px; }
+.commentaires small { color: var(--texte-2); }
+.commentaires p { margin: 4px 0 0; }
+
+/* ---------- Statistiques ---------- */
+.segmente { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--surface-2); border-radius: 12px; padding: 4px; gap: 4px; }
+.segmente button { border: 0; background: none; border-radius: 9px; min-height: 40px; font-weight: 600; color: var(--texte-2); }
+.segmente button.actif { background: var(--surface); color: var(--texte); box-shadow: var(--ombre); }
+.kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 12px; }
+@media (min-width: 600px) { .kpis { grid-template-columns: repeat(3, 1fr); } }   /* 6 pavés : 2 lignes de 3 */
+.kpi { background: var(--surface); border: 1px solid var(--bord); border-top: 3px solid var(--primaire); border-radius: 12px; padding: 10px 12px; text-align: center; }
+.kpi i { display: block; font-style: normal; font-size: 1.05rem; line-height: 1; color: var(--primaire); margin-bottom: 2px; }
+.kpi b { display: block; font-size: 1.45rem; font-variant-numeric: tabular-nums; font-family: var(--police-titre); font-weight: 800; }
+.kpi span { color: var(--texte-2); font-size: .82rem; }
+.table-defile { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -4px; }
+table.stats { border-collapse: collapse; width: 100%; font-size: .85rem; font-variant-numeric: tabular-nums; }
+table.stats th, table.stats td { padding: 7px 8px; border-bottom: 1px solid var(--bord); text-align: center; white-space: nowrap; }   /* intitulés, données et totaux centrés (1re colonne à gauche) */
+table.stats th:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); }
+table.stats thead th { color: var(--texte-2); font-weight: 600; }
+table.stats tbody th { font-weight: 400; padding-left: 18px; }
+.ligne-etab th, .ligne-etab td { font-weight: 700 !important; background: var(--surface-2); }
+table.stats tbody tr:not(.ligne-etab):not(.ligne-total):nth-child(even) > * { background: color-mix(in srgb, var(--surface-2) 50%, var(--surface)); }
+.ligne-etab th { padding-left: 8px !important; }
+.ligne-total th, .ligne-total td { font-weight: 800 !important; border-top: 2px solid var(--texte-2); }
+.barres { display: grid; gap: 6px; }
+.barre { display: grid; grid-template-columns: minmax(90px, 38%) 1fr auto; align-items: center; gap: 8px; font-size: .88rem; }
+.barre-nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.barre-piste { height: 12px; background: var(--surface-2); border-radius: 6px; overflow: hidden; }
+.barre-val { display: block; height: 100%; background: var(--primaire); border-radius: 6px; }
+.barre-n { font-variant-numeric: tabular-nums; color: var(--texte-2); min-width: 2.5em; text-align: right; }
+/* Recours à l'astreinte : barres des HAD en gras et en bleu HAD, celles des antennes en couleur principale ;
+   par HAD : SSV en bleus, NICE en verts, SSBDR (Arles) en gris — foncé pour le HAD, clair pour ses antennes */
+.recours h3 + .aide { margin-top: -4px; }
+.barre-had .barre-nom { font-weight: 700; }
+.recours .barre-val { background: color-mix(in srgb, var(--texte-2) 45%, var(--surface)); }
+.recours .barre-had .barre-val { background: var(--texte-2); }
+:root {
+  --r-ssv: #0d47a1; --r-ssv-ant: #42a5f5; --r-nice: #1b5e20; --r-nice-ant: #5cc461; --r-ssbdr: #4f5a62; --r-ssbdr-ant: #b5bec4;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --r-ssv: #2f74e8; --r-ssv-ant: #6cb8ff; --r-nice: #2e9e45; --r-nice-ant: #7ee08a; --r-ssbdr: #8a969e; --r-ssbdr-ant: #c9d1d6; }
+}
+:root[data-theme="dark"] { --r-ssv: #2f74e8; --r-ssv-ant: #6cb8ff; --r-nice: #2e9e45; --r-nice-ant: #7ee08a; --r-ssbdr: #8a969e; --r-ssbdr-ant: #c9d1d6; }
+.barre.had-ssv .barre-val { background: var(--r-ssv-ant); }
+.barre.had-ssv.barre-had .barre-val { background: var(--r-ssv); }
+.barre.had-nice .barre-val { background: var(--r-nice-ant); }
+.barre.had-nice.barre-had .barre-val { background: var(--r-nice); }
+.barre.had-ssbdr .barre-val { background: var(--r-ssbdr-ant); }
+.barre.had-ssbdr.barre-had .barre-val { background: var(--r-ssbdr); }
+
+/* ---------- Couleurs des HAD dans toute l'application (classes had-<nom>, app.js classeHad) ----------
+   --had : couleur foncée du HAD ; --had-clair : celle de ses antennes */
+.had-ssv { --had: var(--r-ssv); --had-clair: var(--r-ssv-ant); }
+.had-nice { --had: var(--r-nice); --had-clair: var(--r-nice-ant); }
+.had-ssbdr { --had: var(--r-ssbdr); --had-clair: var(--r-ssbdr-ant); }
+/* Barres (page Appels) : liseré gauche à la couleur du HAD, même pour la barre en cours */
+.ligne-dossier[class*="had-"] { border-left-color: var(--had); }
+/* Tableau Stats : filet à gauche de chaque ligne, ligne du HAD légèrement teintée */
+table.stats tr[class*="had-"] th:first-child { box-shadow: inset 4px 0 0 var(--had-clair); }
+table.stats tr.ligne-etab[class*="had-"] th:first-child { box-shadow: inset 4px 0 0 var(--had); }
+table.stats tr.ligne-etab[class*="had-"] > * { background: color-mix(in srgb, var(--had) 11%, var(--surface)); }
+/* Page Semaine : nom et total de l'établissement à sa couleur */
+.eff-etab[class*="had-"] .eff-titre { border-bottom: 2px solid var(--had); }
+.eff-etab[class*="had-"] .eff-titre b { color: var(--had); }
+.eff-titre span { padding: 1px 10px; border-radius: 999px; background: var(--surface-2); font-weight: 600; }
+.eff-etab[class*="had-"] .eff-titre span { background: color-mix(in srgb, var(--had) 14%, var(--surface)); color: var(--texte); }
+[data-heat] { margin-bottom: 8px; }
+table.chaleur { border-collapse: separate; border-spacing: 2px; font-size: .7rem; }
+table.chaleur th { color: var(--texte-2); font-weight: 500; padding: 0 2px; }
+table.chaleur td { width: 24px; min-width: 24px; height: 24px; border-radius: 4px; background-color: var(--surface-2); }
+/* Bandes de repérage : nuit (0h-9h) et week-end, un peu plus foncées */
+table.chaleur td.nuit, table.chaleur tr.we td, .legende-chaleur .bande { background-color: color-mix(in srgb, var(--texte) 9%, var(--surface-2)); }
+table.chaleur tr.we th { color: var(--texte); font-weight: 700; }
+/* 30 min ou plus dans l'heure : pavé plein ; moins de 30 min : rond au centre, sans pavé */
+table.chaleur td.plein, .legende-chaleur .plein { background-color: var(--primaire); }
+table.chaleur td.point { background-image: radial-gradient(circle, var(--primaire) 0 4.5px, transparent 5px); }
+.legende-chaleur { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 8px; font-size: .8rem; }
+.legende-chaleur span { display: inline-block; width: 14px; height: 14px; border-radius: 3px; }
+.legende-chaleur .point, .legende-chaleur .bande { margin-left: 10px; }
+.legende-chaleur .point { background: var(--surface-2) radial-gradient(circle, var(--primaire) 0 3px, transparent 3.5px); }
+
+/* ---------- Feuilles ---------- */
+#feuille { position: fixed; inset: 0; z-index: 20; }
+.voile { position: absolute; inset: 0; background: rgba(5, 15, 20, .45); }
+.feuille {
+  position: absolute; left: 0; right: 0; bottom: 0; top: max(24px, env(safe-area-inset-top)); display: flex; flex-direction: column;
+  background: var(--fond); border-radius: 18px 18px 0 0; overflow: hidden; animation: monte .18s ease-out;
+}
+@keyframes monte { from { transform: translateY(30px); } }
+@media (min-width: 821px) {
+  .feuille { left: 50%; right: auto; width: 680px; transform: translateX(-50%); top: 40px; bottom: 40px; border-radius: 18px; animation: none; }
+}
+.feuille-entete {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; padding: 8px 12px;
+  background: var(--surface); border-bottom: 1px solid var(--bord);
+}
+.feuille-entete h2 { margin: 0; font-size: 1.05rem; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.feuille-entete > span { min-width: 64px; text-align: right; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+.feuille-corps { flex: 1; overflow-y: auto; padding: var(--gouttiere); padding-bottom: calc(32px + env(safe-area-inset-bottom)); -webkit-overflow-scrolling: touch; }
+fieldset { border: 1px solid var(--bord); border-radius: var(--rayon); background: var(--surface); padding: 12px; margin: 0 0 12px; display: grid; gap: 10px; }
+legend { font-weight: 700; padding: 0 6px; }
+legend small, label small { color: var(--texte-2); font-weight: 400; }
+legend.sous { padding: 0; margin-top: 4px; }
+.total { color: var(--accent); font-weight: 700; margin-left: 6px; font-variant-numeric: tabular-nums; }
+/* Antennes : un cadre par établissement, antennes en colonnes de 3 */
+.cadres-antennes { display: flex; flex-wrap: wrap; gap: 8px; }
+.cadre-etab {
+  flex: 1 1 calc(var(--cols) * 98px); border: 1px solid var(--bord); border-radius: 12px; padding: 8px;
+  background: var(--fond); display: grid; gap: 6px; align-content: start;
+}
+.cadre-actif { border-color: var(--primaire); box-shadow: 0 0 0 1px var(--primaire); }
+.cadre-titre { font-size: .75rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--texte-2); }
+.cadre-actif .cadre-titre { color: var(--primaire); }
+.tuiles { display: grid; grid-template-rows: repeat(var(--lignes), auto); grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; }
+.tuile {
+  min-height: 42px; padding: 6px 8px; border: 1px solid var(--bord); border-radius: 10px; background: var(--surface);
+  text-align: left; font-size: .9rem; line-height: 1.15; overflow-wrap: anywhere;
+}
+.tuile.actif { background: var(--primaire); border-color: var(--primaire); color: var(--primaire-texte); font-weight: 700; }
+
+/* Cadre du haut (appel + patient) et rappel du patient */
+.horaire-auto { margin: 0; font-size: .92rem; color: var(--texte-2); }
+.horaire-auto b { color: var(--texte); }
+.horaire-auto small { white-space: nowrap; }
+.rappel { background: var(--primaire-doux); border-radius: var(--rayon); padding: 10px 12px; display: grid; gap: 6px; margin-bottom: 12px; }
+.rappel-grille { display: grid; grid-template-columns: 1fr 1fr 1.4fr; gap: 8px; }
+.rappel-grille span { display: grid; }
+.rappel-grille small { color: var(--texte-2); font-size: .75rem; }
+.rappel-grille b { font-size: 1.25rem; letter-spacing: .06em; }
+.rappel > small { color: var(--texte-2); }
+.puces { display: flex; flex-wrap: wrap; gap: 8px; }
+.puce {
+  border: 1px solid var(--bord); background: var(--surface); border-radius: 999px; padding: 8px 14px; min-height: 40px;
+  display: inline-flex; align-items: center; gap: 6px; font-size: .95rem;
+}
+.puce.actif { background: var(--primaire); border-color: var(--primaire); color: var(--primaire-texte); font-weight: 600; }
+.puce input[type=radio] { position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0; min-height: 0; }
+.puce-type { background: var(--primaire-doux); border-color: transparent; }
+.grille-patient { display: grid; grid-template-columns: 1fr 1fr 1.4fr; gap: 8px; }
+.grille-patient input { text-transform: uppercase; text-align: center; font-weight: 700; letter-spacing: .08em; }
+.grille-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.grille-3 { display: grid; grid-template-columns: 1.3fr 1fr .8fr; gap: 8px; }
+.grille-3 input { padding-left: 8px; padding-right: 8px; }
+.grille-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.grille-4 > * { min-width: 0; }
+.grille-4 input { width: 100%; min-width: 0; padding-left: 4px; padding-right: 4px; font-size: .92rem; }
+.grille-4 label > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.grille-4 label small { font-weight: 400; }
+@media (max-width: 600px) {   /* téléphone : 4 cases étroites, on retire les icônes calendrier / horloge */
+  .grille-4 input { font-size: .85rem; text-align: center; }
+  .grille-4 input[type=date] { font-size: .78rem; padding-left: 1px; padding-right: 1px; }
+  .grille-4 input::-webkit-calendar-picker-indicator { display: none; }
+}
+.case-horaire { display: grid; gap: 4px; align-content: start; font-weight: 600; font-size: .92rem; }
+.case-horaire .btn-stop-large { margin: 0; padding: 0 4px; min-height: 44px; }
+.case-horaire b { display: flex; align-items: center; justify-content: center; min-height: 44px; font-variant-numeric: tabular-nums; }
+[data-heure-appel] + .btn-stop-large { margin: 8px 0 2px; }
+.a-saisir { border: 2px solid var(--accent); }
+label { display: grid; gap: 4px; font-weight: 600; font-size: .92rem; }
+.label-ligne { display: flex; justify-content: space-between; align-items: center; font-weight: 600; font-size: .92rem; }
+.suggestions { display: grid; gap: 6px; }
+.suggestions small { color: var(--texte-2); }
+.alerte { margin: 0; padding: 8px 10px; border-radius: 10px; background: var(--accent-doux); color: var(--texte); font-size: .9rem; }
+.segment {
+  width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px; text-align: left;
+  background: var(--surface-2); border: 1px solid transparent; border-radius: 10px; padding: 8px 10px;
+}
+.segment small { display: block; color: var(--texte-2); font-size: .8rem; }
+.segment-actif { border-color: var(--accent); background: var(--accent-doux); }
+.segment-duree { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.formulaire { display: grid; gap: 12px; align-content: start; }
+.choix-types { display: grid; gap: 8px; }
+
+.btn-grand-centre { width: 100%; min-height: 52px; margin-top: 4px; }
+
+/* Identité du patient toujours visible */
+.bande-patient {
+  position: sticky; top: calc(-1 * var(--gouttiere)); z-index: 2; margin: calc(-1 * var(--gouttiere)) calc(-1 * var(--gouttiere)) 12px;
+  padding: 8px var(--gouttiere); background: var(--primaire); color: var(--primaire-texte); font-size: .92rem;
+  letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: var(--ombre);
+}
+.bande-patient b, .fe-identite b { font-size: 1.05rem; letter-spacing: .06em; }
+.fe-identite { flex: 1; min-width: 0; font-size: .85rem; color: var(--texte-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fe-identite b { color: var(--texte); }
+
+.cartes-closes .carte { opacity: .75; }
+
+/* ---------- Mode PC : menu à gauche + 1 à 4 fenêtres ---------- */
+body.mode-pc { overflow: hidden; }
+body.mode-pc #app {
+  max-width: none; height: 100dvh; padding-bottom: 0; display: grid;
+  grid-template-columns: 310px minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr);
+}
+body.mode-pc .entete { grid-column: 1 / -1; position: static; }
+body.mode-pc #barre-chrono { grid-column: 1 / -1; position: static; }
+body.mode-pc .chrono { margin-bottom: 4px; }
+body.mode-pc .onglets { display: none; }
+body.mode-pc main#vue { grid-column: 2; min-height: 0; overflow-y: auto; padding: 12px; }
+#menu {
+  grid-column: 1; min-height: 0; overflow-y: auto; padding: 12px; background: var(--surface);
+  border-right: 1px solid var(--bord); display: flex; flex-direction: column; gap: 4px;
+}
+#menu .btn-appel { padding: 14px; font-size: 1.1rem; }
+#menu .btn-appel-icone { width: 44px; height: 44px; font-size: 1.5rem; }
+#menu .actions-sec .btn { font-size: .85rem; padding: 8px; }
+#menu .titre-section { margin: 14px 0 6px; font-size: .95rem; }
+.menu-liste { display: grid; gap: 6px; }
+.menu-dossier {
+  display: grid; gap: 1px; text-align: left; width: 100%; padding: 8px 10px; border-radius: 10px;
+  border: 1px solid var(--bord); background: var(--fond); border-left: 4px solid var(--bord);
+}
+.menu-dossier:hover { border-color: var(--primaire); }
+.menu-dossier.affiche { border-left-color: var(--primaire); background: var(--primaire-doux); }
+.menu-dossier.chrono-actif { border-left-color: var(--accent); }
+.menu-dossier.clos { opacity: .7; }
+.md-l1 { display: flex; justify-content: space-between; gap: 8px; }
+.md-l1 > span { color: var(--texte-2); font-size: .85rem; font-variant-numeric: tabular-nums; }
+.md-l2 { font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.md-l3 { font-size: .75rem; color: var(--texte-2); }
+.menu-nav { margin-top: auto; padding-top: 12px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; position: sticky; bottom: -12px; background: var(--surface); padding-bottom: 4px; }
+.menu-nav button { border: 0; background: none; border-radius: 10px; padding: 6px 2px; display: flex; flex-direction: column; align-items: center; font-size: .75rem; color: var(--texte-2); }
+.menu-nav button span { font-size: 1.15rem; }
+.menu-nav button.actif { background: var(--primaire-doux); color: var(--primaire); font-weight: 700; }
+
+.fenetres { display: grid; gap: 12px; height: 100%; }
+.fenetres.n1 { grid-template-columns: minmax(0, 1fr); }
+.fenetres.n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.fenetres.n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.fenetres.n4 { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); }
+.fenetre {
+  display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden;
+  border: 1px solid var(--bord); border-radius: var(--rayon); background: var(--fond); box-shadow: var(--ombre);
+}
+.fenetre-active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-doux); }
+.fenetre-flash { animation: flash .9s ease-out; }
+@keyframes flash { from { box-shadow: 0 0 0 4px var(--primaire); } }
+.fenetre-entete {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--surface); border-bottom: 1px solid var(--bord);
+}
+.fenetre-entete b { font-size: 1.05rem; letter-spacing: .04em; }
+.fe-antenne { color: var(--texte-2); font-size: .85rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btn-mini { border: 1px solid var(--bord); background: var(--fond); border-radius: 8px; min-height: 32px; padding: 4px 10px; font-weight: 600; }
+.btn-clore { background: var(--primaire); border-color: var(--primaire); color: var(--primaire-texte); }
+.fenetre-corps { flex: 1; min-height: 0; overflow-y: auto; padding: 12px; }
+.fenetres-vide { max-width: 520px; margin: 10vh auto; display: grid; gap: 16px; }
+
+/* ---------- Toast ---------- */
+#toast {
+  position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px);
+  background: var(--texte); color: var(--fond); padding: 10px 16px; border-radius: 999px; font-weight: 600; z-index: 30;
+  opacity: 0; pointer-events: none; transition: .2s; max-width: calc(100vw - 32px); text-align: center;
+}
+#toast.visible { opacity: 1; transform: translate(-50%, 0); }
+/* Erreur inattendue : cadre rouge à recopier pour la signaler */
+#erreur {
+  position: fixed; top: calc(8px + env(safe-area-inset-top)); left: 8px; right: 8px; z-index: 40; max-height: 50vh; overflow: auto;
+  background: #7a1020; color: #fff; padding: 10px 12px; border-radius: 10px; box-shadow: 0 6px 24px rgba(0, 0, 0, .4); font-size: .85rem;
+}
+#erreur pre { margin: 6px 0 8px; white-space: pre-wrap; word-break: break-word; user-select: all; font-size: .75rem; }
+#erreur button { background: #fff; color: #7a1020; border: 0; border-radius: 6px; padding: 6px 12px; font-weight: 600; min-height: 0; }
+
+/* ---------- Boutons en relief (3D) ----------
+   Chaque bouton a une face (--b3), éclairée par le haut (dégradé et liseré clair), posée sur une tranche plus foncée
+   (ombre pleine de --b3-prof px) et une ombre portée douce. Au clic, la face s'enfonce sur sa tranche.
+   Les couleurs du texte restent celles de chaque bouton ; seuls fond, bordure et ombres sont redéfinis ici. */
+.btn, .btn-valider, .btn-annuler, .btn-mini, .btn-rond, .btn-stop, .chip-medecin, .bloc-titre,
+.btn-barre-reprise, .btn-barre-encours, .btn-barre-stop, .onglets button.actif, .segmente button.actif {
+  --b3: var(--surface);
+  --b3-prof: 4px;
+  --b3-tranche: color-mix(in srgb, var(--b3) 70%, #000);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--b3) 80%, #fff) 0%, var(--b3) 52%, color-mix(in srgb, var(--b3) 93%, #000) 100%);
+  border: 1px solid var(--b3-tranche);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45), inset 0 -1px 0 rgba(0, 0, 0, .08),
+    0 var(--b3-prof) 0 var(--b3-tranche), 0 calc(var(--b3-prof) + 3px) 10px rgba(0, 0, 0, .2);
+  transform: translateY(0);
+  transition: transform .08s ease, box-shadow .08s ease, filter .15s ease;
+}
+:is(.btn, .btn-valider, .btn-annuler, .btn-mini, .btn-rond, .btn-stop, .chip-medecin, .bloc-titre,
+  .btn-barre-reprise, .btn-barre-encours, .btn-barre-stop):hover:not(:disabled) { filter: brightness(1.06); }
+:is(.btn, .btn-valider, .btn-annuler, .btn-mini, .btn-rond, .btn-stop, .chip-medecin, .bloc-titre,
+  .btn-barre-reprise, .btn-barre-encours, .btn-barre-stop, .onglets button.actif, .segmente button.actif):active:not(:disabled) {
+  transform: translateY(calc(var(--b3-prof) - 1px));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3), inset 0 2px 4px rgba(0, 0, 0, .12), 0 1px 0 var(--b3-tranche), 0 2px 4px rgba(0, 0, 0, .18);
+}
+/* Couleur de face de chaque famille */
+.btn-primaire, .btn-valider, .btn-clore { --b3: var(--primaire); }
+.btn-stop-large, .btn-barre-stop, .btn-barre-encours { --b3: var(--accent); }
+.btn-barre-reprise { --b3: var(--primaire-doux); --b3-tranche: color-mix(in srgb, var(--primaire) 75%, #000); }
+.onglets button.actif { --b3: var(--primaire-doux); --b3-prof: 3px; }
+.segmente button.actif { --b3-prof: 3px; }
+.btn-stop { --b3: color-mix(in srgb, #fff 24%, var(--accent)); }
+.bloc-titre { --b3: color-mix(in srgb, var(--sur-couleur) 18%, var(--bandeau)); --b3-prof: 3px; }
+.bloc-titre[aria-expanded="true"] { --b3: color-mix(in srgb, var(--sur-couleur) 30%, var(--bandeau)); }
+/* Barres et petits boutons : tranche plus fine, pour ne pas mordre sur l'espace entre les barres */
+.btn-barre-reprise, .btn-barre-encours, .btn-barre-stop, .btn-valider, .btn-annuler, .btn-mini, .chip-medecin { --b3-prof: 3px; }
+.plage-alerte .btn-valider, .plage-alerte .btn-annuler { --b3-prof: 2px; }
+
+/* Téléphone « Nouveau dossier » : bille blanche en relief */
+.btn-nouveau .btn-appel-icone {
+  background: radial-gradient(circle at 35% 28%, #fff 0 30%, #e9eef0 70%, #d3dbde 100%);
+  box-shadow: inset 0 -3px 6px rgba(0, 0, 0, .12), 0 4px 0 #9fb1b6, 0 8px 14px rgba(0, 0, 0, .25);
+  transition: transform .08s ease, box-shadow .08s ease;
+}
+.btn-nouveau:active .btn-appel-icone { transform: translateY(3px); box-shadow: inset 0 -2px 4px rgba(0, 0, 0, .12), 0 1px 0 #9fb1b6, 0 2px 4px rgba(0, 0, 0, .2); }
+
+/* Grands cercles (choix du mode, chronomètre Simplifié) : sphère éclairée en haut à gauche, posée sur sa tranche */
+.cercle { --b3: var(--primaire); position: relative; box-shadow: 0 8px 0 color-mix(in srgb, var(--b3) 62%, #000), 0 16px 30px rgba(0, 0, 0, .28); }
+.cercle-standard { --b3: var(--primaire); }
+.cercle-chrono.en-cours { --b3: var(--ok); }
+.cercle-chrono.suspendu { --b3: var(--primaire); }
+.cercle::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle at 32% 24%, rgba(255, 255, 255, .42), rgba(255, 255, 255, 0) 40%),
+    linear-gradient(180deg, rgba(255, 255, 255, .08), rgba(0, 0, 0, .18));
+}
+.cercle:active { transform: translateY(6px) scale(.99); box-shadow: 0 2px 0 color-mix(in srgb, var(--b3) 62%, #000), 0 4px 10px rgba(0, 0, 0, .25); }
+@media (prefers-reduced-motion: reduce) {
+  .btn, .btn-valider, .btn-annuler, .btn-mini, .btn-rond, .btn-stop, .chip-medecin, .bloc-titre,
+  .btn-barre-reprise, .btn-barre-encours, .btn-barre-stop, .btn-nouveau .btn-appel-icone { transition: none; }
+}
+
+/* ---------- Infobulles des intitulés du tableau Stats ----------
+   Bulle flottante (position fixe, placée en JS sous l'intitulé survolé), à bords arrondis, proche d'un carré. */
+table.stats thead th[data-info] { cursor: help; text-decoration: underline dotted color-mix(in srgb, var(--texte-2) 60%, transparent); text-underline-offset: 4px; }
+table.stats thead th[data-info]:hover, table.stats thead th[data-info]:focus-visible { color: var(--primaire); outline: none; }
+.entete-barres [data-info] { cursor: help; text-decoration: underline dotted color-mix(in srgb, var(--texte-2) 60%, transparent); text-underline-offset: 3px; }
+.entete-barres [data-info]:hover, .entete-barres [data-info]:focus-visible { color: var(--primaire); outline: none; }
+/* Antenne à renseigner (identité du patient) ; « Même patient ? » ; dossiers sans antenne dans les Stats */
+.ligne-dossier select.b-ant.manque { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); color: var(--accent); font-weight: 600; }
+.b-proposition {
+  grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
+  padding: 6px 10px; border-radius: 10px; background: var(--accent-doux); font-size: .88rem;
+}
+.b-proposition > span { margin-right: auto; }
+.alerte-antenne { margin: 0 0 12px; padding: 8px 12px; border-radius: 10px; background: var(--accent-doux); color: var(--texte); font-size: .9rem; }
+#infobulle {
+  position: fixed; z-index: 60; box-sizing: border-box; max-width: calc(100vw - 16px);
+  padding: 14px 16px 12px; border-radius: 16px; border: 1px solid var(--bord); border-top: 4px solid var(--primaire);
+  background: var(--surface); color: var(--texte); box-shadow: 0 10px 30px rgba(20, 35, 42, .18), 0 2px 6px rgba(20, 35, 42, .08);
+  font-size: .84rem; line-height: 1.45; text-align: left; white-space: normal; pointer-events: none;
+  animation: infobulle-entree .14s ease-out;
+}
+#infobulle[hidden] { display: none; }
+#infobulle p { margin: 0 0 7px; }
+#infobulle p:last-child, #infobulle ul:last-child { margin-bottom: 0; }
+#infobulle ul { margin: 0 0 7px; padding-left: 18px; }
+#infobulle li { margin: 2px 0; }
+@keyframes infobulle-entree { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { #infobulle { animation: none; } }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #infobulle { box-shadow: 0 10px 30px rgba(0, 0, 0, .5); } }
+:root[data-theme="dark"] #infobulle { box-shadow: 0 10px 30px rgba(0, 0, 0, .5); }
