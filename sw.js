@@ -1,6 +1,6 @@
 /* Service worker : met l'application en cache pour qu'elle fonctionne sans réseau.
    Aucune donnée patient ne passe ici (elles restent dans le stockage chiffré du navigateur). */
-const CACHE = 'astreinte-minuteur-v1.31.0';
+const CACHE = 'astreinte-minuteur-v1.31.1';
 const FICHIERS = [
   './', 'index.html', 'manifest.webmanifest', 'css/style.css',
   'js/config.js', 'js/rules.js', 'js/csv.js', 'js/store.js', 'js/stats.js', 'js/export.js', 'js/app.js',
