@@ -470,6 +470,9 @@ body.ecran-choix .onglets, body.ecran-simple .onglets { visibility: hidden; }   
 .btn-nouveau { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0; border: 0; background: none; color: inherit; }
 .btn-nouveau:active { transform: scale(.98); }
 .btn-nouveau .btn-appel-icone { width: 66px; height: 66px; font-size: 2.2rem; }   /* bouton d'appel agrandi */
+/* Téléphone décollé de son ▲ (2 × 1 mm) : la bille remonte de 4 px, le ▲ et les textes descendent de 4 px */
+.btn-nouveau .btn-appel-icone { position: relative; top: -4px; }
+.btn-nouveau .triangle { margin-top: 4px; }
 .bandeau-actions .triangle { font-size: .8rem; line-height: 1; }
 .bandeau-actions .action-texte { font-size: 1.15rem; font-weight: 800; white-space: nowrap; }
 /* Téléphone : boutons sur une ligne, textes de droite un peu plus petits pour laisser la place à gauche */
