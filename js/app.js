@@ -3,7 +3,7 @@
   'use strict';
 
   const S = window.Store;
-  const VERSION = '1.31.1';
+  const VERSION = '1.31.2';
   const $ = (sel, racine = document) => racine.querySelector(sel);
   const $$ = (sel, racine = document) => [...racine.querySelectorAll(sel)];
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -253,7 +253,7 @@
   const fmtJourHeure = (ts) => `${JOURS_COURTS[new Date(ts).getDay()]} ${jjmm(ts)} ${fmtHeure(ts)}`;   // « Jeu 29/10 09:30 »
 
   /* Mode Simplifié : un seul cercle-chronomètre. Un toucher démarre une intervention (vert « En cours… », temps écoulé
-     depuis ce toucher), un autre l'interrompt (terracotta « À l'arrêt », clignotement lent, sans durée, puis
+     depuis ce toucher), un autre l'interrompt (terracotta « 00:00 » puis « À l'arrêt » en grand, clignotement lent, puis
      « Cliquer pour Démarrer » en plus petit sur 3 lignes).
      Chaque intervention est un dossier sans nom, à compléter plus tard en mode Standard. Dessous, une ligne par
      intervention terminée de la semaine d'astreinte (la plus récente en haut) : Début, Fin et Durée se modifient
@@ -267,7 +267,8 @@
     const contenu = {
       'en-cours': `<span class="cercle-temps" data-chrono="${a && a.seg.debut}">${a ? fmtChrono(Date.now() - a.seg.debut) : ''}</span>
           <span class="cercle-etat">En cours<span class="points" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></span>`,
-      suspendu: `<span class="cercle-etat clignote">À l'arrêt</span>
+      suspendu: `<span class="cercle-temps">00:00</span>
+          <span class="cercle-etat cercle-arret clignote">À l'arrêt</span>
           <span class="cercle-consigne">Cliquer<br>pour<br>Démarrer</span>`,
       pret: '<span class="cercle-etat">Démarrer</span>',
     }[etat];

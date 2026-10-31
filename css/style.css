@@ -152,8 +152,10 @@ body.ecran-choix .onglets, body.ecran-simple .onglets { visibility: hidden; }   
 @keyframes point-1 { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 1; } }
 @keyframes point-2 { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 1; } }
 @keyframes point-3 { 0% { opacity: 0; } 75% { opacity: 1; } 100% { opacity: 1; } }
-/* « À l'arrêt » : clignotement très lent ; dessous, la consigne « Cliquer / pour / Démarrer », plus petite et fixe */
+/* « À l'arrêt » (sous « 00:00 ») : grand, gras, clignotement très lent ; dessous, la consigne « Cliquer / pour / Démarrer »,
+   plus petite et fixe */
 .clignote { animation: clignote 4s ease-in-out infinite; }
+.cercle-arret { font-size: 2.1rem; font-weight: 800; line-height: 1.1; }
 .cercle-consigne { font-size: 1rem; font-weight: 600; line-height: 1.25; opacity: .9; }
 @keyframes clignote { 0%, 100% { opacity: 1; } 50% { opacity: .2; } }
 /* Interventions terminées : Début (jour, date, heure) | Fin (jour + date, heure) | Durée, modifiables */
