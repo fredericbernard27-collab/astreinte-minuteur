@@ -617,19 +617,42 @@ table.stats tr.ligne-etab[class*="had-"] > * { background: color-mix(in srgb, va
 .eff-titre span { padding: 1px 10px; border-radius: 999px; background: var(--surface-2); font-weight: 600; }
 .eff-etab[class*="had-"] .eff-titre span { background: color-mix(in srgb, var(--had) 14%, var(--surface)); color: var(--texte); }
 [data-heat] { margin-bottom: 8px; }
-table.chaleur { border-collapse: separate; border-spacing: 2px; font-size: .7rem; }
+/* Toute la largeur du bloc ; en dessous de 24 px par case (téléphone), le cadre défile */
+table.chaleur { width: 100%; min-width: 700px; table-layout: fixed; border-collapse: separate; border-spacing: 2px; font-size: .75rem; }
 table.chaleur th { color: var(--texte-2); font-weight: 500; padding: 0 2px; }
-table.chaleur td { width: 24px; min-width: 24px; height: 24px; border-radius: 4px; background-color: var(--surface-2); }
-/* Bandes de repérage : nuit (0h-9h) et week-end, un peu plus foncées */
-table.chaleur td.nuit, table.chaleur tr.we td, .legende-chaleur .bande { background-color: color-mix(in srgb, var(--texte) 9%, var(--surface-2)); }
+table.chaleur thead th:first-child { width: 36px; }
+table.chaleur td { height: 32px; border-radius: 5px; }
+/* Fond selon la tranche horaire, le même tous les jours : 9h-20h pâle, 20h-24h intermédiaire, 0h-9h le plus foncé */
+table.chaleur, .legende-chaleur {
+  --case-jour: var(--surface-2);
+  --case-soir: color-mix(in srgb, var(--texte) 13%, var(--surface-2));
+  --case-nuit: color-mix(in srgb, var(--texte) 27%, var(--surface-2));
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) :is(table.chaleur, .legende-chaleur) {
+    --case-jour: color-mix(in srgb, var(--texte) 30%, var(--surface-2));
+    --case-soir: color-mix(in srgb, var(--texte) 15%, var(--surface-2));
+    --case-nuit: var(--surface-2);
+  }
+}
+:root[data-theme="dark"] :is(table.chaleur, .legende-chaleur) {
+  --case-jour: color-mix(in srgb, var(--texte) 30%, var(--surface-2));
+  --case-soir: color-mix(in srgb, var(--texte) 15%, var(--surface-2));
+  --case-nuit: var(--surface-2);
+}
+:is(table.chaleur td, .legende-chaleur span).jour { background-color: var(--case-jour); }
+:is(table.chaleur td, .legende-chaleur span).soir { background-color: var(--case-soir); }
+:is(table.chaleur td, .legende-chaleur span).nuit { background-color: var(--case-nuit); }
+/* Samedi et dimanche : détachés de la semaine par un interstice plus large, libellés en gras */
+table.chaleur tr.sep-we td { height: 6px; padding: 0; background: none; }
 table.chaleur tr.we th { color: var(--texte); font-weight: 700; }
 /* 30 min ou plus dans l'heure : pavé plein ; moins de 30 min : rond au centre, sans pavé */
 table.chaleur td.plein, .legende-chaleur .plein { background-color: var(--primaire); }
 table.chaleur td.point { background-image: radial-gradient(circle, var(--primaire) 0 4.5px, transparent 5px); }
 .legende-chaleur { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 8px; font-size: .8rem; }
 .legende-chaleur span { display: inline-block; width: 14px; height: 14px; border-radius: 3px; }
-.legende-chaleur .point, .legende-chaleur .bande { margin-left: 10px; }
-.legende-chaleur .point { background: var(--surface-2) radial-gradient(circle, var(--primaire) 0 3px, transparent 3.5px); }
+.legende-chaleur .point, .legende-chaleur .jour, .legende-chaleur .soir, .legende-chaleur .nuit { margin-left: 10px; }
+.legende-chaleur .point { background: var(--case-jour) radial-gradient(circle, var(--primaire) 0 3px, transparent 3.5px); }
 
 /* ---------- Feuilles ---------- */
 #feuille { position: fixed; inset: 0; z-index: 20; }

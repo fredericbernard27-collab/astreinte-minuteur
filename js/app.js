@@ -3,7 +3,7 @@
   'use strict';
 
   const S = window.Store;
-  const VERSION = '1.31.3';
+  const VERSION = '1.31.5';
   const $ = (sel, racine = document) => racine.querySelector(sel);
   const $$ = (sel, racine = document) => [...racine.querySelectorAll(sel)];
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -1336,8 +1336,11 @@
   }
 
   /* Carte « Horaires d'interventions » : une case par jour de la semaine et par heure. Pavé bleu = 30 min ou plus
-     d'interventions dans l'heure (cumul de la période, Reprises comprises) ; rond bleu = moins de 30 min ; vide = rien. */
+     d'interventions dans l'heure (cumul de la période, Reprises comprises) ; rond bleu = moins de 30 min ; vide = rien.
+     Fond des cases selon la tranche (9h-20h pâle, 20h-24h moyen, 0h-9h foncé), le même pour tous les jours ;
+     samedi et dimanche détachés de la semaine par un interstice plus large. */
   const SEUIL_HORAIRE = 30;   // minutes (arrondies comme dans l'infobulle de la case)
+  const trancheCase = (h) => (h < 9 ? 'nuit' : h >= 20 ? 'soir' : 'jour');
   function carteChaleur(st) {
     const jours = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
     const options = ['<option value="">Tous établissements</option>'];
@@ -1352,12 +1355,14 @@
       <select data-heat>${options.join('')}</select>
       <div class="table-defile"><table class="chaleur">
         <thead><tr><th></th>${Array.from({ length: 24 }, (_, h) => `<th>${h}</th>`).join('')}</tr></thead>
-        <tbody>${st.tempsHoraires.map((l, i) => `<tr class="${i >= 5 ? 'we' : ''}"><th>${jours[i]}</th>${l.map((ms, h) => `
-          <td class="${h < 9 ? 'nuit' : ''} ${Math.round(ms / 60000) >= SEUIL_HORAIRE ? 'plein' : ms > 0 ? 'point' : ''}"
+        <tbody>${st.tempsHoraires.map((l, i) => `${i === 5 ? '<tr class="sep-we" aria-hidden="true"><td colspan="25"></td></tr>' : ''}
+          <tr class="${i >= 5 ? 'we' : ''}"><th>${jours[i]}</th>${l.map((ms, h) => `
+          <td class="${trancheCase(h)} ${Math.round(ms / 60000) >= SEUIL_HORAIRE ? 'plein' : ms > 0 ? 'point' : ''}"
             title="${jours[i]} ${h}h-${h + 1}h : ${ms > 0 ? fmtDuree(ms) : 'aucune intervention'}"></td>`).join('')}</tr>`).join('')}</tbody>
       </table></div>
       <p class="aide legende-chaleur"><span class="plein"></span> 30 min ou plus dans l'heure
-        <span class="point"></span> moins de 30 min <span class="bande"></span> nuit (0h-9h) et week-end</p>`;
+        <span class="point"></span> moins de 30 min <span class="jour"></span> 9h-20h <span class="soir"></span> 20h-24h
+        <span class="nuit"></span> 0h-9h</p>`;
   }
 
   function vueStats() {
