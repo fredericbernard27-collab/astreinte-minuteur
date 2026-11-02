@@ -3,7 +3,7 @@
   'use strict';
 
   const S = window.Store;
-  const VERSION = '1.31.6';
+  const VERSION = '1.31.7';
   const $ = (sel, racine = document) => racine.querySelector(sel);
   const $$ = (sel, racine = document) => [...racine.querySelectorAll(sel)];
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -40,6 +40,7 @@
     blocPlages: false,        // bandeau bleu : bloc « Plage W continu » déplié
     onglet: 'accueil',
     semaine: Rules.cleSemaine(Date.now()),
+    decalAppels: 0,           // onglet Appels : semaine affichée, en semaines avant la semaine en cours (0 = en cours)
     periode: 'semaine',
     cibleHeat: '',
     pile: [],                 // feuilles ouvertes (la dernière est visible)
@@ -115,6 +116,7 @@
     $('#verrou').innerHTML = '';
     $('#app').hidden = false;
     ui.semaine = Rules.cleSemaine(Date.now());
+    ui.decalAppels = 0;
     ui.mode = '';   // à chaque ouverture : choix Simplifié / Standard
     rendre();
     if (!S.state.medecinCourant) ouvrirFeuille({ type: 'medecin', accueil: true });
@@ -419,17 +421,22 @@
   }
 
   /* ---------- Accueil simplifié : un bouton, puis un dossier = une barre horizontale ---------- */
+  // Semaine d'astreinte affichée dans l'onglet Appels (‹ / › au-dessus des barres) ; suit le lundi 9 h si décalage 0
+  const semaineAppels = () => Rules.decalerSemaine(Rules.cleSemaine(Date.now()), ui.decalAppels);
+
   /* Dossiers de la semaine + ceux saisis cette semaine (un appel saisi après coup peut dater de la semaine
-     précédente : il reste affiché).
+     précédente : il reste affiché). Semaine passée : ses dossiers seulement.
      Ordre : du plus récemment traité au plus ancien (dernière saisie ou action sur le dossier). ▲ / ▼ (NOM, Date)
      fige un autre ordre ; dès qu'un dossier est de nouveau renseigné, il repasse en haut sans déplacer les autres. */
   function dossiersBarres() {
     const a = S.segmentActif();
-    const cle = Rules.cleSemaine(Date.now());
+    const cle = semaineAppels();
     const debutSemaine = Rules.bornesSemaine(cle).debut;
     const liste = new Set(S.dossiersDeSemaine(cle));
-    S.dossiersActifs().filter((d) => d.segments.length && d.creeLe >= debutSemaine).forEach((d) => liste.add(d));
-    if (a) liste.add(a.dossier);
+    if (!ui.decalAppels) {
+      S.dossiersActifs().filter((d) => d.segments.length && d.creeLe >= debutSemaine).forEach((d) => liste.add(d));
+      if (a) liste.add(a.dossier);
+    }
     const rang = new Map(ui.ordreBarres.map((id, i) => [id, i]));
     const traite = (d) => d.traiteLe || d.majLe || 0;
     const r = (d) => (traite(d) <= ui.triLe && rang.has(d.id) ? rang.get(d.id) : -1);   // -1 : traité depuis le tri
@@ -767,9 +774,10 @@
     return valDate(d.getTime());
   }
 
-  // Appel d'une autre semaine d'astreinte (lundi 9 h → lundi 9 h) : il est compté dans cette semaine-là
+  // Appel d'une autre semaine d'astreinte (lundi 9 h → lundi 9 h) que celle affichée : il est compté dans cette semaine-là
   function tagDate(ts) {
-    const ecart = Rules.cleSemaine(ts).localeCompare(Rules.cleSemaine(Date.now()));
+    const ref = ui.mode === 'simple' ? Rules.cleSemaine(Date.now()) : semaineAppels();
+    const ecart = Rules.cleSemaine(ts).localeCompare(ref);
     return ecart ? (ecart < 0 ? 'sem. préc.' : 'sem. suiv.') : '';
   }
 
@@ -983,14 +991,31 @@
         </div>`;
   }
 
+  // Titre des barres avec ‹ / › : revoir (et corriger) les dossiers d'une semaine d'astreinte passée
+  function navAppels(n) {
+    const b = Rules.bornesSemaine(semaineAppels());
+    const courante = !ui.decalAppels;
+    return `
+      <div class="nav-semaine nav-appels">
+        <button class="btn-rond" data-a="sem-appels" data-n="-1" aria-label="Semaine précédente" title="Semaine précédente">‹</button>
+        <div>
+          <h2 class="titre-section">${courante ? 'Dossiers de la semaine' : `Semaine du ${fmtDate(b.debut)}`} <span class="compteur">${n}</span></h2>
+          <small>${fmtDate(b.debut)} 9h → ${fmtDate(b.fin)} 9h${courante ? ' (en cours)' : ''}</small>
+          ${courante ? '' : '<button class="lien" data-a="sem-appels" data-n="0">↩ Revenir à la semaine en cours</button>'}
+        </div>
+        <button class="btn-rond" data-a="sem-appels" data-n="1" aria-label="Semaine suivante" title="Semaine suivante" ${courante ? 'disabled' : ''}>›</button>
+      </div>`;
+  }
+
   function vueAccueil() {
     const liste = dossiersBarres();
     return `
       <button class="lien changer-mode" data-a="mode" data-v="simple">⏱ Passer en mode Simplifié</button>
       ${bandeauNouveau()}
       ${bandeauxAlerte()}
-      <h2 class="titre-section">Dossiers de la semaine <span class="compteur">${liste.length}</span></h2>
+      ${navAppels(liste.length)}
       ${liste.length ? `${enteteBarres()}<div class="lignes-dossiers">${liste.map(barreDossier).join('')}</div>`
+        : ui.decalAppels ? '<p class="vide">Aucun dossier cette semaine-là.</p>'
         : `<p class="vide">Aucun dossier cette semaine.<br>Touchez « Nouveau dossier » dès qu'un appel arrive.</p>`}`;
   }
 
@@ -1815,6 +1840,7 @@
       const avant = S.segmentActif();
       const d = S.nouveauDossier('Appel reçu');
       ui.onglet = 'accueil';
+      ui.decalAppels = 0;   // le nouveau dossier est dans la semaine en cours
       rendre();
       window.scrollTo(0, 0);
       const champ = $(`[data-barre="${d.id}"] [data-f=nom3]`);
@@ -1844,6 +1870,7 @@
       const avant = S.segmentActif();
       S.nouveauSegment(d, 'Reprise');
       const r = S.regrouper();
+      ui.decalAppels = 0;   // la reprise démarre maintenant : retour à la semaine en cours
       rendre();
       toast(r.scindes.length ? '▶ Nouvelle semaine d\'astreinte : nouveau dossier pour ce patient'
         : avant ? `■ ${S.codePatient(avant.dossier) || 'Dossier précédent'} arrêté · ▶ reprise` : `▶ Reprise ${S.codePatient(d) || ''}`);
@@ -2073,6 +2100,12 @@
     // data-v : semaine à saisir (alerte « Effectif J1 manquant » des Stats) ; sinon la semaine en cours
     'feuille-effectifs': ({ v }) => { ui.effectifsReportes = false; ouvrirFeuille({ type: 'effectifs', semaine: v || Rules.cleSemaine(Date.now()) }); },
     sem: ({ n }) => { ui.semaine = Rules.decalerSemaine(ui.semaine, Number(n)); rendre(); },
+    // Onglet Appels : ‹ / › d'une semaine (pas au-delà de la semaine en cours), 0 = retour à la semaine en cours
+    'sem-appels': ({ n }) => {
+      ui.decalAppels = Number(n) ? Math.min(0, ui.decalAppels + Number(n)) : 0;
+      ui.deplies.clear();
+      rendre();
+    },
     periode: ({ v }) => { ui.periode = v; rendre(); },
 
     export: async ({ anonyme }) => {

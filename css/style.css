@@ -529,6 +529,11 @@ body.ecran-choix .onglets, body.ecran-simple .onglets { visibility: hidden; }   
 .info { background: var(--primaire-doux); padding: 10px 12px; border-radius: 10px; margin: 10px 0 0; font-size: .92rem; }
 .nav-semaine { display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: center; margin: 10px 0; }
 .nav-semaine small { display: block; color: var(--texte-2); }
+.nav-semaine .btn-rond:disabled { opacity: .35; cursor: default; }
+/* Onglet Appels : titre des barres entre ‹ et › (semaines passées) */
+.nav-appels { margin: 18px 0 8px; }
+.nav-appels .titre-section { margin: 0; justify-content: center; }
+.nav-appels .lien { margin-top: 4px; }
 /* Patients présents : établissements répartis en colonnes selon la largeur (une seule sur téléphone), séparées
    par un liseré ; un établissement n'est jamais coupé entre deux colonnes */
 .eff-grille { columns: 250px; column-gap: 32px; column-rule: 1px solid var(--bord); }
