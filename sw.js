@@ -1,9 +1,9 @@
 /* Service worker : met l'application en cache pour qu'elle fonctionne sans réseau.
    Aucune donnée patient ne passe ici (elles restent dans le stockage chiffré du navigateur). */
-const CACHE = 'astreinte-minuteur-v1.33.0';
+const CACHE = 'astreinte-minuteur-v1.34.0';
 const FICHIERS = [
   './', 'index.html', 'manifest.webmanifest', 'css/style.css',
-  'js/config.js', 'js/rules.js', 'js/csv.js', 'js/store.js', 'js/stats.js', 'js/export.js', 'js/app.js',
+  'js/config.js', 'js/rules.js', 'js/csv.js', 'js/store.js', 'js/stats.js', 'js/export.js', 'js/visite.js', 'js/app.js',
   'vendor/xlsx.full.min.js', 'vendor/manrope/manrope-latin-wght-normal.woff2', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
 ];
 

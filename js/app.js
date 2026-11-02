@@ -3,7 +3,7 @@
   'use strict';
 
   const S = window.Store;
-  const VERSION = '1.33.0';
+  const VERSION = '1.34.0';
   const $ = (sel, racine = document) => racine.querySelector(sel);
   const $$ = (sel, racine = document) => [...racine.querySelectorAll(sel)];
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -123,7 +123,8 @@
     ui.decalAppels = 0;
     ui.mode = '';   // à chaque ouverture : choix Simplifié / Standard
     rendre();
-    if (!S.state.medecinCourant) ouvrirFeuille({ type: 'medecin', accueil: true });
+    if (!S.state.medecinCourant) ouvrirFeuille({ type: 'medecin', accueil: true });   // la visite est proposée après
+    else if (!S.state.visiteVue) lancerVisite();
     else demanderEffectifs();
   }
 
@@ -1483,12 +1484,129 @@
       <section class="bloc"><h3>Horaires d'interventions</h3>${carteChaleur(st)}</section>`;
   }
 
+  /* ---------- Visite guidée (moteur : js/visite.js) ----------
+     Proposée une fois après le déverrouillage (S.state.visiteVue), relançable depuis Plus › Aide. Chaque étape met
+     l'écran voulu (mode, onglet) sans rien enregistrer ; l'interface est remise comme avant à la fin. Onglet Appels
+     sans dossier : une barre d'exemple (inerte, jamais enregistrée) le temps de la visite. */
+  function ecranVisite(mode, onglet) {
+    if (ui.mode === mode && (!onglet || ui.onglet === onglet)) return;
+    ui.mode = mode;
+    if (onglet) ui.onglet = onglet;
+    rendre();
+    window.scrollTo(0, 0);
+  }
+  function barreExemple() {
+    const nav = $('#vue .nav-appels');
+    if (!nav || $('#vue .lignes-dossiers .ligne-dossier')) return;
+    const e = S.state.config.etablissements[0];
+    const t = Date.now() - 40 * 60000;
+    const d = {
+      id: 'visite-exemple', nom3: 'DUP', prenom2: 'JE', rpss: '', etab: e ? e.nom : '', antenne: e ? Rules.antennesDe(e)[0] : '',
+      creeLe: t, segments: [{ id: 'visite-exemple-1', type: 'Appel reçu', debut: t, fin: t + 12 * 60000, memo: 'Douleur : bolus PCA', commentaire: 'Rappeler l\'IDE à 22h' }],
+    };
+    const html = `${enteteBarres()}<div class="lignes-dossiers visite-exemple">${barreDossier(d)}</div>`;
+    const vide = $('#vue > p.vide');
+    if (vide) vide.outerHTML = html; else nav.insertAdjacentHTML('afterend', html);
+  }
+  const premiereBarre = (sel = '') => $(`#vue .lignes-dossiers .ligne-dossier ${sel}`.trim());
+
+  function etapesVisite() {
+    const appels = () => ecranVisite('standard', 'accueil');
+    const exemple = !dossiersBarres().length;   // pas de barre cette semaine : barre d'exemple
+    return [
+      { titre: 'Bienvenue dans Astreinte Minuteur',
+        texte: `<p>En 2 minutes, cette visite montre les écrans et les boutons utiles. Rien n'est modifié pendant la visite.</p>
+          <p class="aide">Au clavier : ← → pour changer d'étape, Échap pour quitter.</p>`,
+        boutons: { suiv: 'Commencer la visite', quitter: 'Plus tard' } },
+      { aller: () => ecranVisite(''), cible: () => [...document.querySelectorAll('.choix-mode .cercle')], titre: 'Deux modes',
+        texte: `<p><b>Simplifié</b> : un seul gros bouton chronomètre, pour aller vite.<br><b>Standard</b> : toute l'application.</p>
+          <p>Le choix est proposé à chaque ouverture, et l'on passe de l'un à l'autre à tout moment : les données sont les mêmes.</p>` },
+      { aller: () => ecranVisite('simple'), cible: '.cercle-chrono', titre: 'Mode Simplifié',
+        texte: `<p>Un toucher : l'intervention démarre (cercle vert). Un autre toucher : elle s'arrête.</p>
+          <p>Les interventions s'affichent dessous : choisissez l'antenne, le nom se complète plus tard en mode Standard.</p>` },
+      { aller: appels, cible: '.btn-nouveau', titre: 'Un appel arrive',
+        texte: `<p>Touchez <b>« Nouveau dossier »</b> : le chronomètre démarre tout de suite (et s'arrête sur le dossier précédent).</p>
+          <p>Une barre apparaît pour ce patient.</p>` },
+      { aller: appels, cible: () => premiereBarre(), assurer: barreExemple, titre: 'Une barre = un patient sur la semaine',
+        texte: `<p><b>NOM</b> (3 lettres suffisent), prénom, RPSS et <b>antenne, obligatoire</b> (case orange tant qu'elle est vide).
+          Mémo et Commentaire sont libres.</p><p>Remplissez-la pendant ou après l'appel.</p>
+          ${exemple ? '<p class="aide">Barre d\'exemple, non enregistrée.</p>' : ''}` },
+      { aller: appels, cible: () => premiereBarre('.b-horaire'), assurer: barreExemple, titre: 'Date et heures',
+        texte: `<p>Pendant l'appel, Fin est un bouton <b>■ Stop</b> et la durée défile.</p>
+          <p>Pour corriger une heure ou une durée (en minutes) : tapez, puis <b>« ✓ Valider »</b>. En rouge : chevauchement avec un autre appel.</p>` },
+      { aller: appels, cible: () => premiereBarre('.b-rep'), assurer: barreExemple, titre: '▶ Reprise',
+        texte: `<p>Nouvelle intervention pour le <b>même patient</b> (rappel, rédaction, mail…) : le chronomètre repart sur sa barre.</p>
+          <p>« +N » à côté du nom affiche ses interventions précédentes de la semaine.</p>` },
+      { aller: appels, cible: '.bloc-plages', titre: 'Plage W continu',
+        texte: `<p>Vous avez travaillé en continu sans lancer le chronomètre ? Déclarez la plage (début, fin) :
+          elle est comptée, sans double compte avec les appels.</p>` },
+      { aller: appels, cible: '.bloc-cumul', titre: 'Cumul',
+        texte: '<p>Votre temps des dernières 24 h et de la semaine, par tranche horaire.</p>' },
+      { aller: appels, cible: '.nav-appels', titre: 'Semaines passées',
+        texte: `<p>‹ et › affichent les barres d'une semaine précédente, toujours modifiables.</p>
+          <p>La semaine d'astreinte va du <b>lundi 9h au lundi 9h</b>.</p>` },
+      { aller: () => { ui.semaine = Rules.cleSemaine(Date.now()); ecranVisite('standard', 'semaine'); },
+        cible: () => $(innerWidth < 600 ? '.eff-grille .eff-etab' : '.eff-grille'),   // téléphone : le 1er HAD seulement
+        titre: 'Patients présents',
+        texte: `<p>À saisir <b>le lundi, par antenne</b>. Ce nombre sert à tous les calculs « pour 100 patients » des Stats :
+          sans lui, pas de comparaison possible.</p>` },
+      { aller: () => ecranVisite('standard', 'semaine'), cible: () => $('#vue .bloc:last-of-type'), titre: 'Chronologie',
+        texte: '<p>Toutes les interventions de la semaine, dans l\'ordre. Juste au-dessus : la note de couverture ou de remplacement.</p>' },
+      { aller: () => ecranVisite('standard', 'stats'), cible: '.kpis', titre: 'Stats',
+        texte: `<p>En haut, la période : Semaine (‹ › pour en changer), 30 jours ou Tout.</p>
+          <p>Ici : nombre de patients, temps total et temps moyen par patient.</p>` },
+      { aller: () => ecranVisite('standard', 'stats'), cible: () => { const t = $('table.stats'); return t && t.closest('.bloc'); },
+        titre: 'Par établissement et antenne',
+        texte: `<p>Minutes par jour <b>pour 100 patients</b> : on compare des antennes de tailles différentes.</p>
+          <p>Survolez un intitulé de colonne pour son explication.</p>` },
+      { aller: () => ecranVisite('standard', 'stats'), cible: '.recours', titre: 'Recours à l\'astreinte',
+        texte: `<p>HAD et antennes classés, puis la nuit et les week-ends et fériés.</p>
+          <p>À droite, l'écart à la moyenne globale : <b>1,5 x</b> = 1,5 fois la moyenne de tous les HAD.</p>` },
+      { aller: () => ecranVisite('standard', 'stats'), cible: () => { const t = $('table.chaleur'); return t && t.closest('.bloc'); },
+        titre: 'Horaires d\'interventions',
+        texte: `<p>Quand tombent les appels : une case par jour et par heure (pavé = 30 min ou plus dans l'heure).</p>
+          <p>En fin de ligne : durée et patients du jour.</p>` },
+      { aller: () => ecranVisite('standard', 'plus'), cible: () => { const b = $('[data-a="export"]'); return b && b.closest('.bloc'); },
+        titre: 'Exports Excel',
+        texte: '<p>Par patient (noms abrégés) ou <b>par anonyme</b> (P1, P2…) : c\'est celui-ci qu\'on partage.</p>' },
+      { aller: () => ecranVisite('standard', 'plus'), cible: () => { const b = $('[data-a="sauvegarde"]'); return b && b.closest('.bloc'); },
+        titre: 'Sauvegarde',
+        texte: `<p>Les données restent sur cet appareil, chiffrées par votre code. <b>Créez un fichier de sauvegarde chaque semaine.</b></p>
+          <p>Il sert aussi à passer sur un autre appareil : « Importer et fusionner ».</p>` },
+      { aller: () => ecranVisite('standard', 'plus'), cible: '#btn-medecin', titre: 'Médecin d\'astreinte',
+        texte: '<p>Votre nom est inscrit sur chaque appel. Touchez-le pour changer de médecin (relève, remplacement).</p>' },
+      { titre: 'Bonne astreinte !',
+        texte: '<p>Pour revoir cette visite : onglet <b>Plus</b> › « 🎓 Visite guidée ».</p>' },
+    ];
+  }
+
+  function lancerVisite() {
+    const avant = { mode: ui.mode, onglet: ui.onglet, semaine: ui.semaine, periode: ui.periode, decalAppels: ui.decalAppels };
+    ui.pile = [];
+    ui.decalAppels = 0;
+    rendre();
+    window.Visite.demarrer(etapesVisite(), {
+      hautFixe: () => { const h = $('.entete'); return h ? Math.max(0, h.getBoundingClientRect().bottom) : 0; },
+      fin: () => {
+        Object.assign(ui, avant);
+        if (!S.state.visiteVue) { S.state.visiteVue = true; S.planifier(); }
+        rendre();
+        window.scrollTo(0, 0);
+      },
+    });
+  }
+
   /* ---------- Onglet Plus ---------- */
   function vuePlus() {
     const p = periode();
     const c = S.state.config;
     const aPurger = S.aPurger().length;
     return `
+      <section class="bloc">
+        <h3>Aide</h3>
+        <p class="aide">Les écrans et les boutons utiles, en 2 minutes. Rien n'est modifié pendant la visite.</p>
+        <button class="btn btn-primaire" data-a="visite">🎓 Visite guidée</button>
+      </section>
       <section class="bloc">
         <h3>Export tableur (Excel)</h3>
         ${choixPeriode()}
@@ -1551,7 +1669,9 @@
     const f = ui.pile.pop();
     if (f && f.type === 'effectifs') ui.effectifsReportes = true;
     rendre();
-    if (f && f.type === 'medecin' && f.accueil) demanderEffectifs();
+    if (f && f.type === 'medecin' && f.accueil) {
+      if (!S.state.visiteVue) lancerVisite(); else demanderEffectifs();
+    }
   }
 
   function rendreFeuille() {
@@ -2147,6 +2267,7 @@
       toast('Plage supprimée');
     },
     'choisir-medecin': () => ouvrirFeuille({ type: 'medecin' }),
+    visite: () => lancerVisite(),
     'set-medecin': ({ v }) => {
       S.state.medecinCourant = v;
       const a = S.segmentActif();

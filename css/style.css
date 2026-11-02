@@ -983,3 +983,33 @@ table.stats thead th[data-info]:hover, table.stats thead th[data-info]:focus-vis
 @media (prefers-reduced-motion: reduce) { #infobulle { animation: none; } }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #infobulle { box-shadow: 0 10px 30px rgba(0, 0, 0, .5); } }
 :root[data-theme="dark"] #infobulle { box-shadow: 0 10px 30px rgba(0, 0, 0, .5); }
+
+/* ---------- Visite guidée (js/visite.js) ----------
+   Halo : rectangle transparent autour de l'élément montré, dont l'ombre géante assombrit tout le reste ;
+   bulle : explication et boutons, sous la cible (ou dessus, ou en bas de l'écran). */
+#visite { position: fixed; inset: 0; z-index: 50; pointer-events: none; }
+.visite-trou {
+  position: fixed; border-radius: 14px; pointer-events: none;
+  box-shadow: 0 0 0 200vmax rgba(20, 12, 8, .62); outline: 3px solid var(--primaire); outline-offset: 2px;
+  transition: left .3s ease, top .3s ease, width .3s ease, height .3s ease;
+}
+.visite-trou.sans-cible { outline: none; }
+.visite-bulle {
+  position: fixed; box-sizing: border-box; pointer-events: auto; padding: 16px 18px 14px; border-radius: 16px;
+  background: var(--surface); color: var(--texte); border: 1px solid var(--bord); box-shadow: 0 14px 44px rgba(0, 0, 0, .38);
+  transition: left .3s ease, top .3s ease;
+}
+.visite-bulle h2 { margin: 0 0 8px; font-size: 1.08rem; line-height: 1.3; }
+.visite-texte { font-size: .92rem; line-height: 1.45; }
+.visite-texte p { margin: 0 0 8px; }
+.visite-compte { margin: 0 0 4px; font-size: .75rem; font-weight: 700; letter-spacing: .04em; color: var(--primaire); }
+.visite-boutons { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; }
+.visite-nav { display: flex; gap: 8px; }
+.visite-nav .btn { min-height: 40px; padding: 8px 14px; }
+@media (prefers-reduced-motion: reduce) { .visite-trou, .visite-bulle { transition: none; } }
+/* Onglet Appels sans dossier : barre d'exemple de la visite, marquée « Exemple » */
+.visite-exemple .ligne-dossier { position: relative; }
+.visite-exemple .ligne-dossier::after {
+  content: 'Exemple'; position: absolute; top: -9px; right: 12px; padding: 1px 8px; border-radius: 999px;
+  background: var(--primaire); color: var(--primaire-texte); font-size: .7rem; font-weight: 700;
+}
