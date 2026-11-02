@@ -3,7 +3,7 @@
   'use strict';
 
   const S = window.Store;
-  const VERSION = '1.34.0';
+  const VERSION = '1.34.1';
   const $ = (sel, racine = document) => racine.querySelector(sel);
   const $$ = (sel, racine = document) => [...racine.querySelectorAll(sel)];
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -1343,7 +1343,8 @@
      (« SSBDR Arles »). Valeur = minutes ÷ Effectif J1 × 100 ÷ nombre de jours ; pas d'Effectif J1 : pas de barre.
      1) toute la période ; 2) nuit 0h-9h, tous jours confondus ; 3) samedis, dimanches et fériés réunis en une
      moyenne commune : leurs minutes additionnées ÷ leur nombre de journées (et non la somme de deux moyennes).
-     Écart à la moyenne globale : valeur de la barre ÷ même calcul pour le Total (tous les HAD), ex. 1,5 x. */
+     Écart à la moyenne globale : valeur de la barre ÷ même calcul pour le Total (tous les HAD), ex. 1,5 x
+     (1,5 fois la moyenne de toutes les antennes/HAD). */
   function unitesRecours(st) {
     return st.etabs.flatMap((e) => {
       const conf = S.state.config.etablissements.find((x) => x.nom === e.nom);
@@ -1373,7 +1374,7 @@
   function graphiquesRecours(st) {
     const parJour = (c, temps, n) => (c.npatients && n > 0 ? (temps / 60000 / c.npatients) * 100 / n : null);
     const unites = unitesRecours(st);
-    const sansEffectif = '<p class="vide">Saisissez les patients présents (onglet Semaine) pour obtenir ce graphique.</p>';
+    const sansEffectif = '<p class="vide">Saisissez le nombre de patients présents par antenne (onglet Semaine) pour obtenir ce graphique.</p>';
     const fois = (x) => `${x.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}&nbsp;x`;
     const graphique = (titre, sousTitre, valeur, vide = sansEffectif) => {
       const items = unites.map((u) => ({ ...u, v: valeur(u.c) })).filter((u) => u.v != null).sort((a, b) => b.v - a.v);
@@ -1525,7 +1526,8 @@
         texte: `<p>Un toucher : l'intervention démarre (cercle vert). Un autre toucher : elle s'arrête.</p>
           <p>Les interventions s'affichent dessous : choisissez l'antenne, le nom se complète plus tard en mode Standard.</p>` },
       { aller: appels, cible: '.btn-nouveau', titre: 'Un appel arrive',
-        texte: `<p>Touchez <b>« Nouveau dossier »</b> : le chronomètre démarre tout de suite (et s'arrête sur le dossier précédent).</p>
+        texte: `<p>Touchez <b>« Nouveau dossier »</b> : le chronomètre démarre tout de suite.
+          Un seul chronomètre tourne à la fois : si celui d'un autre patient tournait encore, il s'arrête tout seul.</p>
           <p>Une barre apparaît pour ce patient.</p>` },
       { aller: appels, cible: () => premiereBarre(), assurer: barreExemple, titre: 'Une barre = un patient sur la semaine',
         texte: `<p><b>NOM</b> (3 lettres suffisent), prénom, RPSS et <b>antenne, obligatoire</b> (case orange tant qu'elle est vide).
@@ -1548,8 +1550,9 @@
       { aller: () => { ui.semaine = Rules.cleSemaine(Date.now()); ecranVisite('standard', 'semaine'); },
         cible: () => $(innerWidth < 600 ? '.eff-grille .eff-etab' : '.eff-grille'),   // téléphone : le 1er HAD seulement
         titre: 'Patients présents',
-        texte: `<p>À saisir <b>le lundi, par antenne</b>. Ce nombre sert à tous les calculs « pour 100 patients » des Stats :
-          sans lui, pas de comparaison possible.</p>` },
+        texte: `<p>Le <b>nombre</b> de patients suivis par chaque antenne cette semaine (tous, pas seulement ceux qui ont appelé).
+          À saisir <b>le lundi</b>, ici ou par le bandeau « Saisir les patients présents » de l'onglet Appels.</p>
+          <p>Ce nombre sert à tous les calculs « pour 100 patients » des Stats : sans lui, pas de comparaison possible.</p>` },
       { aller: () => ecranVisite('standard', 'semaine'), cible: () => $('#vue .bloc:last-of-type'), titre: 'Chronologie',
         texte: '<p>Toutes les interventions de la semaine, dans l\'ordre. Juste au-dessus : la note de couverture ou de remplacement.</p>' },
       { aller: () => ecranVisite('standard', 'stats'), cible: '.kpis', titre: 'Stats',
@@ -1561,10 +1564,11 @@
           <p>Survolez un intitulé de colonne pour son explication.</p>` },
       { aller: () => ecranVisite('standard', 'stats'), cible: '.recours', titre: 'Recours à l\'astreinte',
         texte: `<p>HAD et antennes classés, puis la nuit et les week-ends et fériés.</p>
-          <p>À droite, l'écart à la moyenne globale : <b>1,5 x</b> = 1,5 fois la moyenne de tous les HAD.</p>` },
-      { aller: () => ecranVisite('standard', 'stats'), cible: () => { const t = $('table.chaleur'); return t && t.closest('.bloc'); },
+          <p>À droite, l'écart à la moyenne globale : <b>1,5 x</b> = 1,5 fois la moyenne de toutes les antennes/HAD.</p>` },
+      { aller: () => ecranVisite('standard', 'stats'), cible: 'table.chaleur',
         titre: 'Horaires d\'interventions',
-        texte: `<p>Quand tombent les appels : une case par jour et par heure (pavé = 30 min ou plus dans l'heure).</p>
+        texte: `<p>Quand tombent les appels : une case par jour et par heure
+          (pavé = 30 min ou plus dans l'heure, rond = moins de 30 min).</p>
           <p>En fin de ligne : durée et patients du jour.</p>` },
       { aller: () => ecranVisite('standard', 'plus'), cible: () => { const b = $('[data-a="export"]'); return b && b.closest('.bloc'); },
         titre: 'Exports Excel',
