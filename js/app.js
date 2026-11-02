@@ -3,7 +3,7 @@
   'use strict';
 
   const S = window.Store;
-  const VERSION = '1.32.0';
+  const VERSION = '1.33.0';
   const $ = (sel, racine = document) => racine.querySelector(sel);
   const $$ = (sel, racine = document) => [...racine.querySelectorAll(sel)];
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -995,19 +995,23 @@
         </div>`;
   }
 
+  // Flèches des boutons ronds ‹ / › de changement de semaine (chevron épais, à la couleur du texte du bouton)
+  const fleche = (d) => `<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="${d}"/></svg>`;
+  const FLECHE = { g: fleche('M15 4.5 7.5 12l7.5 7.5'), d: fleche('M9 4.5 16.5 12 9 19.5') };
+
   // Titre des barres avec ‹ / › : revoir (et corriger) les dossiers d'une semaine d'astreinte passée
   function navAppels(n) {
     const b = Rules.bornesSemaine(semaineAppels());
     const courante = !ui.decalAppels;
     return `
       <div class="nav-semaine nav-appels">
-        <button class="btn-rond" data-a="sem-appels" data-n="-1" aria-label="Semaine précédente" title="Semaine précédente">‹</button>
+        <button class="btn-rond" data-a="sem-appels" data-n="-1" aria-label="Semaine précédente" title="Semaine précédente">${FLECHE.g}</button>
         <div>
           <h2 class="titre-section">${courante ? 'Dossiers de la semaine' : `Semaine du ${fmtDate(b.debut)}`} <span class="compteur">${n}</span></h2>
           <small>${fmtDate(b.debut)} 9h → ${fmtDate(b.fin)} 9h${courante ? ' (en cours)' : ''}</small>
           ${courante ? '' : '<button class="lien" data-a="sem-appels" data-n="0">↩ Revenir à la semaine en cours</button>'}
         </div>
-        <button class="btn-rond" data-a="sem-appels" data-n="1" aria-label="Semaine suivante" title="Semaine suivante" ${courante ? 'disabled' : ''}>›</button>
+        <button class="btn-rond" data-a="sem-appels" data-n="1" aria-label="Semaine suivante" title="Semaine suivante" ${courante ? 'disabled' : ''}>${FLECHE.d}</button>
       </div>`;
   }
 
@@ -1160,10 +1164,10 @@
     const courante = ui.semaine === Rules.cleSemaine(Date.now());
     return `
       <div class="nav-semaine">
-        <button class="btn-rond" data-a="sem" data-n="-1" aria-label="Semaine précédente">‹</button>
+        <button class="btn-rond" data-a="sem" data-n="-1" aria-label="Semaine précédente" title="Semaine précédente">${FLECHE.g}</button>
         <div><b>Semaine du ${fmtDate(b.debut)}${courante ? ' (en cours)' : ''}</b>
           <small>${fmtDate(b.debut)} 9h → ${fmtDate(b.fin)} 9h</small></div>
-        <button class="btn-rond" data-a="sem" data-n="1" aria-label="Semaine suivante">›</button>
+        <button class="btn-rond" data-a="sem" data-n="1" aria-label="Semaine suivante" title="Semaine suivante">${FLECHE.d}</button>
       </div>`;
   }
 
@@ -1217,13 +1221,17 @@
       ${ui.periode === 'semaine' ? navSemaine() : ''}`;
   }
 
-  function barres(items, { valeur = (x) => x.n, libelle = (x) => x.nom, format = (v) => v, classe = () => '' } = {}) {
+  /* extra : 2e colonne de chiffres après la valeur ; entete : intitulés des colonnes de chiffres, au-dessus des barres
+     (les colonnes sont alors alignées d'une barre à l'autre) */
+  function barres(items, { valeur = (x) => x.n, libelle = (x) => x.nom, format = (v) => v, classe = () => '', extra = null, entete = null } = {}) {
     if (!items.length) return '<p class="vide">Aucune donnée.</p>';
     const max = Math.max(...items.map(valeur), 1);
-    return `<div class="barres">${items.map((x) => `
+    const ligneEntete = entete ? `<div class="barre barre-entete" aria-hidden="true"><span></span><span></span>
+      ${entete.map((t) => `<span class="barre-n">${t}</span>`).join('')}</div>` : '';
+    return `<div class="barres${entete ? ' a-entete' : ''}${extra ? ' a-extra' : ''}">${ligneEntete}${items.map((x) => `
       <div class="barre ${classe(x)}"><span class="barre-nom">${esc(libelle(x))}</span>
         <span class="barre-piste"><span class="barre-val" style="width:${(valeur(x) / max) * 100}%"></span></span>
-        <span class="barre-n">${format(valeur(x))}</span></div>`).join('')}</div>`;
+        <span class="barre-n">${format(valeur(x))}</span>${extra ? `<span class="barre-n barre-extra">${extra(x)}</span>` : ''}</div>`).join('')}</div>`;
   }
 
   const fmt1 = (x) => (x == null ? '—' : (Math.round(x * 10) / 10).toLocaleString('fr-FR'));
@@ -1333,7 +1341,8 @@
      SSV en bleus, NICE en verts, SSBDR (Arles) en gris ; foncé pour le HAD, plus clair pour ses antennes. Un HAD à une seule antenne n'a qu'une barre
      (« SSBDR Arles »). Valeur = minutes ÷ Effectif J1 × 100 ÷ nombre de jours ; pas d'Effectif J1 : pas de barre.
      1) toute la période ; 2) nuit 0h-9h, tous jours confondus ; 3) samedis, dimanches et fériés réunis en une
-     moyenne commune : leurs minutes additionnées ÷ leur nombre de journées (et non la somme de deux moyennes). */
+     moyenne commune : leurs minutes additionnées ÷ leur nombre de journées (et non la somme de deux moyennes).
+     Écart à la moyenne globale : valeur de la barre ÷ même calcul pour le Total (tous les HAD), ex. 1,5 x. */
   function unitesRecours(st) {
     return st.etabs.flatMap((e) => {
       const conf = S.state.config.etablissements.find((x) => x.nom === e.nom);
@@ -1364,10 +1373,16 @@
     const parJour = (c, temps, n) => (c.npatients && n > 0 ? (temps / 60000 / c.npatients) * 100 / n : null);
     const unites = unitesRecours(st);
     const sansEffectif = '<p class="vide">Saisissez les patients présents (onglet Semaine) pour obtenir ce graphique.</p>';
+    const fois = (x) => `${x.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}&nbsp;x`;
     const graphique = (titre, sousTitre, valeur, vide = sansEffectif) => {
       const items = unites.map((u) => ({ ...u, v: valeur(u.c) })).filter((u) => u.v != null).sort((a, b) => b.v - a.v);
+      const moyenne = valeur(st.total);
       return `<section class="bloc recours"><h3>${titre}</h3><p class="aide">${sousTitre}</p>
-        ${items.length ? barres(items, { valeur: (x) => x.v, format: fmt1, classe: (x) => `${classeHad(x.etab)} ${x.had ? 'barre-had' : ''}` }) : vide}</section>`;
+        ${items.length ? barres(items, {
+          valeur: (x) => x.v, format: fmt1, classe: (x) => `${classeHad(x.etab)} ${x.had ? 'barre-had' : ''}`,
+          extra: (x) => (moyenne > 0 ? fois(x.v / moyenne) : '—'),
+          entete: ['Minutes/<wbr>jour pour 100 patients', 'Écart à la moyenne globale'],
+        }) : vide}</section>`;
     };
     const nWe = st.nbJoursType.samedi + st.nbJoursType.dimFerie;
     return graphique('Recours à l\'astreinte', 'Minutes/jour % patients',
@@ -1383,11 +1398,39 @@
   /* Carte « Horaires d'interventions » : une case par jour de la semaine et par heure. Pavé bleu = 30 min ou plus
      d'interventions dans l'heure (cumul de la période, Reprises comprises) ; rond bleu = moins de 30 min ; vide = rien.
      Fond des cases selon la tranche (9h-20h pâle, 20h-24h moyen, 0h-9h foncé), le même pour tous les jours ;
-     samedi et dimanche détachés de la semaine par un interstice plus large. */
+     samedi et dimanche détachés de la semaine par un interstice plus large.
+     En fin de ligne : temps d'intervention et patients distincts de ce jour ; si la période compte plus d'un de ces
+     jours (astreinte de 2 semaines : 2 lundis), moyenne par jour, notée « /j ». Ligne Total : temps et patients
+     distincts de toute la période (jamais en moyenne).
+     Sous la carte : bandeau de chaque tranche sous ses colonnes, puis soleils (9h-19h) et lunes (20h-8h) qui
+     grandissent jusqu'au milieu de leur plage (14h, 2h) puis rapetissent. */
   const SEUIL_HORAIRE = 30;   // minutes (arrondies comme dans l'infobulle de la case)
   const trancheCase = (h) => (h < 9 ? 'nuit' : h >= 20 ? 'soir' : 'jour');
+  function astre(h) {
+    const soleil = h >= 9 && h <= 19;
+    const k = soleil ? h - 9 : (h + 4) % 24;   // rang dans la plage : 0 → 10 (soleil), 0 → 12 (lune)
+    const milieu = soleil ? 5 : 6;
+    const taille = Math.round(8 + 12 * (1 - Math.abs(k - milieu) / (milieu + 1)));
+    return soleil
+      ? `<svg class="soleil" width="${taille}" height="${taille}" viewBox="-10 -10 20 20"><circle r="4.5"/>${
+        Array.from({ length: 8 }, (_, i) => `<line x1="0" y1="-6.5" x2="0" y2="-9.5" transform="rotate(${i * 45})"/>`).join('')}</svg>`
+      : `<svg class="lune" width="${taille}" height="${taille}" viewBox="-10 -10 20 20"><path d="M4 -6.93A8 8 0 1 0 4 6.93A7 7 0 0 1 4 -6.93Z" transform="rotate(-25)"/></svg>`;
+  }
+  function finLigneChaleur(st, i) {
+    const n = st.joursSemaine.nb[i];
+    const ms = st.tempsHoraires[i].reduce((t, x) => t + x, 0);
+    const p = st.joursSemaine.patients[i];
+    const moyenne = n > 1.01;
+    const parJ = moyenne ? '<small>/j</small>' : '';
+    const titre = moyenne ? ` title="Moyenne sur ${fmt1(n)} journées"` : '';
+    return `<td class="fin-ligne"${titre}>${ms > 0 ? fmtDuree(moyenne ? ms / n : ms) + parJ : '—'}</td>
+      <td class="fin-ligne"${titre}>${p > 0 ? fmt1(moyenne ? p / n : p) + parJ : '—'}</td>`;
+  }
   function carteChaleur(st) {
     const jours = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+    const tempsTotal = st.tempsHoraires.flat().reduce((t, x) => t + x, 0);
+    // Période d'une semaine (lundi 9h → lundi 9h) : sur la ligne du lundi, 0h-9h est le lundi suivant (renvoi *)
+    const uneSemaine = ui.periode === 'semaine';
     const options = ['<option value="">Tous établissements</option>'];
     S.state.config.etablissements.forEach((e) => {
       options.push(`<option value="${esc(e.nom)}" ${ui.cibleHeat === e.nom ? 'selected' : ''}>${esc(e.nom)}</option>`);
@@ -1397,17 +1440,29 @@
       });
     });
     return `
-      <select data-heat>${options.join('')}</select>
+      <div class="entete-chaleur">
+        <select data-heat>${options.join('')}</select>
+        <p class="aide legende-chaleur"><span class="plein"></span> 30 min ou plus dans l'heure
+          <span class="point"></span> moins de 30 min</p>
+      </div>
       <div class="table-defile"><table class="chaleur">
-        <thead><tr><th></th>${Array.from({ length: 24 }, (_, h) => `<th>${h}</th>`).join('')}</tr></thead>
-        <tbody>${st.tempsHoraires.map((l, i) => `${i === 5 ? '<tr class="sep-we" aria-hidden="true"><td colspan="25"></td></tr>' : ''}
-          <tr class="${i >= 5 ? 'we' : ''}"><th>${jours[i]}</th>${l.map((ms, h) => `
-          <td class="${trancheCase(h)} ${Math.round(ms / 60000) >= SEUIL_HORAIRE ? 'plein' : ms > 0 ? 'point' : ''}"
-            title="${jours[i]} ${h}h-${h + 1}h : ${ms > 0 ? fmtDuree(ms) : 'aucune intervention'}"></td>`).join('')}</tr>`).join('')}</tbody>
+        <thead><tr><th></th>${Array.from({ length: 24 }, (_, h) => `<th>${h}</th>`).join('')}
+          <th class="fin-ligne">Durée</th><th class="fin-ligne">Patients</th></tr></thead>
+        <tbody>${st.tempsHoraires.map((l, i) => `${i === 5 ? '<tr class="sep-we" aria-hidden="true"><td colspan="27"></td></tr>' : ''}
+          <tr class="${i >= 5 ? 'we' : ''}"><th>${jours[i]}${i === 0 && uneSemaine ? '<sup class="renvoi">*</sup>' : ''}</th>${l.map((ms, h) => `
+          <td class="${trancheCase(h)} ${Math.round(ms / 60000) >= SEUIL_HORAIRE ? 'plein' : ms > 0 ? 'point' : ''}${i === 0 && h < 9 && uneSemaine ? ' renvoi-case' : ''}"
+            title="${jours[i]} ${h}h-${h + 1}h${i === 0 && h < 9 && uneSemaine ? ' (lundi suivant)' : ''} : ${ms > 0 ? fmtDuree(ms) : 'aucune intervention'}"></td>`).join('')}${finLigneChaleur(st, i)}</tr>`).join('')}
+          <tr class="sep-we" aria-hidden="true"><td colspan="27"></td></tr>
+          <tr class="total-chaleur"><th>Total</th><td colspan="24" class="libelle-total">toute la période</td>
+            <td class="fin-ligne">${tempsTotal > 0 ? fmtDuree(tempsTotal) : '—'}</td><td class="fin-ligne">${st.patientsCible || '—'}</td></tr></tbody>
+        <tfoot>
+          <tr class="tranches"><th></th><td colspan="9" class="nuit">0h-9h</td><td colspan="11" class="jour">9h-20h</td>
+            <td colspan="4" class="soir">20h-24h</td><td colspan="2"></td></tr>
+          <tr class="astres" aria-hidden="true"><th></th>${Array.from({ length: 24 }, (_, h) => `<td>${astre(h)}</td>`).join('')}<td colspan="2"></td></tr>
+        </tfoot>
       </table></div>
-      <p class="aide legende-chaleur"><span class="plein"></span> 30 min ou plus dans l'heure
-        <span class="point"></span> moins de 30 min <span class="jour"></span> 9h-20h <span class="soir"></span> 20h-24h
-        <span class="nuit"></span> 0h-9h</p>`;
+      ${uneSemaine ? `<p class="aide note-chaleur">* La partie du lundi de 0h à 9h rapporte celle du lundi de fin de
+        semaine d'astreinte</p>` : ''}`;
   }
 
   function vueStats() {

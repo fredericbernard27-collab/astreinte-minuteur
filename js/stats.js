@@ -64,6 +64,23 @@
     });
     return res;
   }
+  /* Fin de ligne de la carte : par jour de la semaine (lundi = 0), nombre de ces journées d'horloge (0 h → 24 h) dans
+     [debut, fin[, en fraction de journée (une semaine d'astreinte lundi 9 h → lundi 9 h : 15 h + 9 h = 1 lundi), et somme
+     sur ces journées des patients distincts qui y ont eu une intervention (segments : [début, fin, clé patient]). */
+  function parJourSemaine(segments, debut, fin) {
+    const nb = Array(7).fill(0);
+    const patients = Array(7).fill(0);
+    for (const j = new Date(new Date(debut).setHours(0, 0, 0, 0)); j.getTime() < fin;) {
+      const a = j.getTime();
+      j.setDate(j.getDate() + 1);
+      const b = j.getTime();
+      const dedans = Math.min(b, fin) - Math.max(a, debut);
+      const jour = (new Date(a).getDay() + 6) % 7;
+      if (dedans > 0) nb[jour] += dedans / (b - a);
+      patients[jour] += new Set(segments.filter(([x, y]) => x < b && y > a).map(([, , p]) => p)).size;
+    }
+    return { nb, patients };
+  }
   const ecart = (a, b) => Object.fromEntries(Object.keys(a).map((k) => [k, a[k] - b[k]]));
 
   function finaliser(c) {
@@ -137,7 +154,7 @@
         const finS = Math.min(s.fin == null ? maintenant : s.fin, maintenant);
         if (finS > s.debut) {
           cibles.forEach((c) => c.intervalles.push([s.debut, finS]));
-          if (correspondCible) intervallesCible.push([s.debut, finS]);
+          if (correspondCible) intervallesCible.push([s.debut, finS, d.id]);
         }
         if (s.medecin || s.type === 'Appel reçu') {
           const m = medecins.get(s.medecin || NON_RENSEIGNE) || { sollic: 0, temps: 0 };
@@ -208,12 +225,15 @@
     };
 
     sollicitations.sort((a, b) => a.ts - b.ts);
+    const patientDe = Rules.patients(dossiersPeriode, (d) => S.debutDossier(d));   // id du dossier → patient
 
     return {
       TRANCHES, total, nbDossiers, transversal,
-      nbDenominations: new Set(Rules.patients(dossiersPeriode, (d) => S.debutDossier(d)).values()).size,
+      nbDenominations: new Set(patientDe.values()).size,
       nbSansAntenne: dossiersPeriode.filter((d) => !d.antenne).length, semaineJ1: cleJ1, nbJours, nbJoursType, etabs, antennes, heatmap,
-      tempsHoraires: tempsParHeure(intervallesCible), sollicitations,
+      tempsHoraires: tempsParHeure(intervallesCible),
+      joursSemaine: parJourSemaine(intervallesCible.map(([a, b, id]) => [a, b, patientDe.get(id)]), j1, bout),
+      patientsCible: new Set(intervallesCible.map(([, , id]) => patientDe.get(id))).size, sollicitations,
       medecins: [...medecins.entries()].map(([nom, v]) => ({ nom, ...v })).sort((a, b) => b.sollic - a.sollic),
       TYPES_JOUR,
     };
