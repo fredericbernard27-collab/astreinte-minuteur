@@ -3,7 +3,7 @@
   'use strict';
 
   const S = window.Store;
-  const VERSION = '1.31.5';
+  const VERSION = '1.31.6';
   const $ = (sel, racine = document) => racine.querySelector(sel);
   const $$ = (sel, racine = document) => [...racine.querySelectorAll(sel)];
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -1315,6 +1315,22 @@
     });
   }
 
+  /* Effectif J1 manquant : antenne (ou HAD sans antenne) qui a du temps d'intervention dans la période, mais aucun
+     patient présent saisi pour la semaine de J1. Pas de correction : son temps reste dans la barre de son HAD, sans ses
+     patients au dénominateur (recours surestimé), et elle n'a pas de barre. On le signale, avec le moyen de le saisir.
+     Les dossiers sans antenne ont leur propre alerte. */
+  function alerteEffectifsJ1(st) {
+    const manquants = st.antennes.filter((a) => a.etab !== 'Non renseigné' && a.nom !== 'Non renseigné'
+      && a.tempsInstances > 0 && a.npatients == null);
+    if (!manquants.length) return '';
+    const noms = manquants.map((a) => esc(a.nom === a.etab ? a.etab : `${a.etab} ${a.nom}`)).join(', ');
+    const semaine = fmtDate(Rules.bornesSemaine(st.semaineJ1).debut);
+    return `<p class="alerte-antenne">⚠ Effectif J1 manquant : <b>${noms}</b>. Sans ces patients présents, le recours à
+      l'astreinte est absent ou surestimé. À saisir dans l'onglet Semaine, semaine du ${semaine} (1<sup>er</sup> jour
+      de la période), « Patients présents ».
+      <button class="btn-texte" data-a="feuille-effectifs" data-v="${st.semaineJ1}">Saisir maintenant</button></p>`;
+  }
+
   function graphiquesRecours(st) {
     const parJour = (c, temps, n) => (c.npatients && n > 0 ? (temps / 60000 / c.npatients) * 100 / n : null);
     const unites = unitesRecours(st);
@@ -1377,6 +1393,7 @@
         ${kpi(st.nbDenominations ? fmtDuree(t.tempsInstances / st.nbDenominations) : '—', 'par patient', '⌀')}
       </div>
       ${st.nbSansAntenne ? `<p class="alerte-antenne">⚠ ${pluriel(st.nbSansAntenne, 'dossier')} sans antenne dans la période : à compléter (onglet Appels)</p>` : ''}
+      ${alerteEffectifsJ1(st)}
       <section class="bloc"><h3>Par établissement et antenne</h3>${tableStats(st)}</section>
       ${graphiquesRecours(st)}
       <section class="bloc"><h3>Horaires d'interventions</h3>${carteChaleur(st)}</section>`;
@@ -2053,7 +2070,8 @@
       toast(`👤 ${v} inscrit par défaut`);
     },
 
-    'feuille-effectifs': () => { ui.effectifsReportes = false; ouvrirFeuille({ type: 'effectifs', semaine: Rules.cleSemaine(Date.now()) }); },
+    // data-v : semaine à saisir (alerte « Effectif J1 manquant » des Stats) ; sinon la semaine en cours
+    'feuille-effectifs': ({ v }) => { ui.effectifsReportes = false; ouvrirFeuille({ type: 'effectifs', semaine: v || Rules.cleSemaine(Date.now()) }); },
     sem: ({ n }) => { ui.semaine = Rules.decalerSemaine(ui.semaine, Number(n)); rendre(); },
     periode: ({ v }) => { ui.periode = v; rendre(); },
 
