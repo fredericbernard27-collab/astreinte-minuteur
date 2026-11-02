@@ -3,7 +3,7 @@
   'use strict';
 
   const S = window.Store;
-  const VERSION = '1.31.7';
+  const VERSION = '1.32.0';
   const $ = (sel, racine = document) => racine.querySelector(sel);
   const $$ = (sel, racine = document) => [...racine.querySelectorAll(sel)];
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -59,6 +59,8 @@
   // Mis de côté depuis la v1.9.0 : l'accueil affiche les dossiers en barres horizontales sur tous les écrans.
   const mqPC = window.matchMedia('(min-width: 1100px)');
   const estPC = () => false;
+  // Version « fichier unique » (Tasks/outils/fichier_unique.py) ouverte par double clic, sans serveur
+  const FICHIER = location.protocol === 'file:';
   const MAX_FENETRES = 4;
 
 
@@ -98,6 +100,8 @@
         ${nouveau ? `
           <p class="aide">Choisissez un code personnel (6 caractères minimum). Il chiffre les données sur cet appareil.
           <strong>Sans ce code, les données sont perdues.</strong></p>
+          ${FICHIER ? `<p class="aide">Fichier unique : les données restent dans ce navigateur, sur ce PC. Ouvrez toujours ce
+          fichier avec le même navigateur (Edge ou Chrome) et rangez-le à un endroit fixe (ex. Documents).</p>` : ''}
           <input type="password" name="code" placeholder="Nouveau code" minlength="6" required autocomplete="new-password">
           <input type="password" name="code2" placeholder="Confirmer le code" minlength="6" required autocomplete="new-password">
           <button class="btn btn-primaire" type="submit">Créer mon espace</button>`
@@ -1481,7 +1485,7 @@
           <button class="btn btn-danger" data-a="effacer-tout">Effacer toutes les données</button>
         </div>
       </section>
-      <p class="aide centre">Astreinte Minuteur v${VERSION} · données stockées uniquement sur cet appareil, chiffrées.</p>`;
+      <p class="aide centre">Astreinte Minuteur v${VERSION}${FICHIER ? ' (fichier unique)' : ''} · données stockées uniquement sur cet appareil, chiffrées.</p>`;
   }
 
   /* =====================================================================
